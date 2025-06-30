@@ -56,8 +56,8 @@ namespace Dralyxor {
         };
 
         struct Micro_Instruction {
-            Micro_Operation_Code op_code;
-            uint8_t operand;
+            Micro_Operation_Code op_code{};
+            uint8_t operand{};
         };
 
         static constexpr size_t max_micro_instructions = 8;

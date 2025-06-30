@@ -431,7 +431,7 @@ namespace Dralyxor {
         if (decrypted_) {
             uint16_t current_plain_checksum;
 
-            if constexpr (storage_n > 1) {
+            if constexpr (storage_n > 1)
                 current_plain_checksum = Detail::Calculate_String_Content_Checksum(storage_, storage_n - 1);
             else
                 current_plain_checksum = Detail::Calculate_String_Content_Checksum<CharT>(nullptr, 0);

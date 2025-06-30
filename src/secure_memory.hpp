@@ -29,6 +29,7 @@
 #pragma once
 
 #include <cstddef>
+#include <type_traits>
 
 #if defined(_WIN32) || defined(_WIN64)
     #if !defined(_KERNEL_MODE)
@@ -36,6 +37,8 @@
     #else
         extern "C" __declspec(dllimport) void __stdcall RtlSecureZeroMemory(void*, size_t);
     #endif
+#else
+    #include <string.h>
 #endif
 
 namespace Dralyxor {
@@ -51,10 +54,8 @@ namespace Dralyxor {
             SecureZeroMemory(buffer, sizeof(buffer));
 #endif
 #else
-            volatile T* p = buffer;
-
-            for (size_t i = 0; i < N_Clear; ++i)
-                p[i] = (T)0;
+            volatile void* p_volatile_buffer = buffer;
+            memset(const_cast<void*>(p_volatile_buffer), 0, sizeof(buffer));
 #endif
         }
 
@@ -68,10 +69,8 @@ namespace Dralyxor {
             SecureZeroMemory(ptr, bytes);
 #endif
 #else
-            volatile unsigned char* p = static_cast<volatile unsigned char*>(ptr);
-
-            for (size_t i = 0; i < bytes; ++i)
-                p[i] = 0;
+            volatile void* p_volatile_ptr = ptr;
+            memset(const_cast<void*>(p_volatile_ptr), 0, bytes);
 #endif
         }
     }
