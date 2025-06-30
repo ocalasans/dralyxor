@@ -28,17 +28,17 @@
 
 #pragma once
 
-#include <cstdint> 
-#include <utility> 
-#include <type_traits> 
+#include <cstdint>
+#include <utility>
+#include <type_traits>
 //
-#include "detection.hpp"           
-#include "env_traits.hpp"          
-#include "prng.hpp"                
-#include "algorithms.hpp"          
-#include "integrity_constants.hpp" 
-#include "anti_debug.hpp"          
-#include "secure_memory.hpp"       
+#include "detection.hpp"
+#include "env_traits.hpp"
+#include "prng.hpp"
+#include "algorithms.hpp"
+#include "integrity_constants.hpp"
+#include "anti_debug.hpp"
+#include "secure_memory.hpp"
 
 namespace Dralyxor {
     namespace Detail {
@@ -99,7 +99,7 @@ namespace Dralyxor {
     }
 
     template<typename Obfuscated_String_Type_Param> class Secure_Accessor;
-    template<typename _CharT, size_t _N_Incl_Null, int Instance_Counter>
+    template<typename _CharT, size_t _N_Incl_Null, int Instance_Counter, uint64_t User_Seed = 0>
 
     class Obfuscated_String {
         public:
@@ -107,7 +107,7 @@ namespace Dralyxor {
             static constexpr size_t storage_n = _N_Incl_Null;
             static_assert(storage_n > 0, "Obfuscated_String storage_n must be greater than 0 (must include null terminator).");
 
-            friend class Secure_Accessor<Obfuscated_String<CharT, storage_n, Instance_Counter>>;
+            friend class Secure_Accessor<Obfuscated_String<CharT, storage_n, Instance_Counter, User_Seed>>;
                 
             _DRALYXOR_CONSTEVAL Obfuscated_String(const CharT* input_string);
             ~Obfuscated_String();
@@ -131,7 +131,7 @@ namespace Dralyxor {
         private:
             void Clear_Internal_Data() noexcept;
 
-            static constexpr uint64_t compile_time_seed = Detail::fnv1a_hash(__DATE__ __TIME__) ^ ((uint64_t)Instance_Counter << 32) ^ storage_n;
+            static constexpr uint64_t compile_time_seed = (User_Seed != 0) ? (User_Seed ^ ((uint64_t)Instance_Counter << 32) ^ storage_n) : (Detail::fnv1a_hash(__DATE__ __TIME__) ^ ((uint64_t)Instance_Counter << 32) ^ storage_n);
             static constexpr uint8_t content_checksum_obf_salt = 0xDA;
 
             CharT storage_[storage_n]{};
@@ -202,7 +202,6 @@ namespace Dralyxor {
 
                         if (selected_code == Detail::Micro_Operation_Code::SWAP_NIB)
                             operand_val = 0;
-
                         else if (selected_code == Detail::Micro_Operation_Code::ROTR || selected_code == Detail::Micro_Operation_Code::ROTL)
                             operand_val = (operand_val % 7) + 1;
                         
@@ -260,9 +259,9 @@ namespace Dralyxor {
             }
     };
 
-    template<typename C, size_t N_NULL, int CTR>
+    template<typename C, size_t N_NULL, int CTR, uint64_t U_SEED>
 
-    _DRALYXOR_CONSTEVAL Obfuscated_String<C, N_NULL, CTR>::Obfuscated_String(const CharT* input) : num_actual_instructions_in_program_(0), _content_checksum_obfuscated(0), decrypted_(false), moved_from_(false) {
+    _DRALYXOR_CONSTEVAL Obfuscated_String<C, N_NULL, CTR, U_SEED>::Obfuscated_String(const CharT* input) : num_actual_instructions_in_program_(0), _content_checksum_obfuscated(0), decrypted_(false), moved_from_(false) {
         Initialize_Internal_Canaries();
         Generate_Micro_Program_Instructions(compile_time_seed ^ 0xDEADBEEFC0FFEEULL);
 
@@ -284,16 +283,16 @@ namespace Dralyxor {
         }
     }
 
-    template<typename C, size_t N_NULL, int CTR>
+    template<typename C, size_t N_NULL, int CTR, uint64_t U_SEED>
 
-    Obfuscated_String<C, N_NULL, CTR>::~Obfuscated_String() {
+    Obfuscated_String<C, N_NULL, CTR, U_SEED>::~Obfuscated_String() {
         if (!moved_from_)
             Clear_Internal_Data();
     }
     
-    template<typename C, size_t N_NULL, int CTR>
+    template<typename C, size_t N_NULL, int CTR, uint64_t U_SEED>
 
-    Obfuscated_String<C, N_NULL, CTR>::Obfuscated_String(Obfuscated_String&& other) noexcept : decrypted_(other.decrypted_), num_actual_instructions_in_program_(other.num_actual_instructions_in_program_), _internal_integrity_canary1(other._internal_integrity_canary1), 
+    Obfuscated_String<C, N_NULL, CTR, U_SEED>::Obfuscated_String(Obfuscated_String&& other) noexcept : decrypted_(other.decrypted_), num_actual_instructions_in_program_(other.num_actual_instructions_in_program_), _internal_integrity_canary1(other._internal_integrity_canary1), 
         _internal_integrity_canary2(other._internal_integrity_canary2), _content_checksum_obfuscated(other._content_checksum_obfuscated), moved_from_(false) {
         
         for(size_t i = 0; i < storage_n; ++i)
@@ -318,9 +317,9 @@ namespace Dralyxor {
         }
     }
     
-    template<typename C, size_t N_NULL, int CTR>
+    template<typename C, size_t N_NULL, int CTR, uint64_t U_SEED>
 
-    Obfuscated_String<C, N_NULL, CTR>& Obfuscated_String<C, N_NULL, CTR>::operator=(Obfuscated_String&& other) noexcept {
+    Obfuscated_String<C, N_NULL, CTR, U_SEED>& Obfuscated_String<C, N_NULL, CTR, U_SEED>::operator=(Obfuscated_String&& other) noexcept {
         if (this != &other) {
             if (!moved_from_)
                 Clear_Internal_Data();
@@ -357,9 +356,9 @@ namespace Dralyxor {
         return *this;
     }
     
-    template<typename C, size_t N_NULL, int CTR>
+    template<typename C, size_t N_NULL, int CTR, uint64_t U_SEED>
 
-    uint64_t Obfuscated_String<C, N_NULL, CTR>::Decrypt() noexcept {
+    uint64_t Obfuscated_String<C, N_NULL, CTR, U_SEED>::Decrypt() noexcept {
         if (!Verify_Internal_Canaries()) {
             Clear_Internal_Data();
             decrypted_ = false;
@@ -418,9 +417,9 @@ namespace Dralyxor {
         return 0;
     }
 
-    template<typename C, size_t N_NULL, int CTR>
-    
-    uint64_t Obfuscated_String<C, N_NULL, CTR>::Encrypt() noexcept {
+    template<typename C, size_t N_NULL, int CTR, uint64_t U_SEED>
+
+    uint64_t Obfuscated_String<C, N_NULL, CTR, U_SEED>::Encrypt() noexcept {
         if (!Verify_Internal_Canaries()) {
             Clear_Internal_Data();
             decrypted_ = false;
@@ -474,10 +473,10 @@ namespace Dralyxor {
 
         return 0;
     }
+    
+    template<typename C, size_t N_NULL, int CTR, uint64_t U_SEED>
 
-    template<typename C, size_t N_NULL, int CTR>
-
-    void Obfuscated_String<C, N_NULL, CTR>::Clear_Internal_Data() noexcept {
+    void Obfuscated_String<C, N_NULL, CTR, U_SEED>::Clear_Internal_Data() noexcept {
         Detail::Secure_Clear_Memory(storage_);
         
         if constexpr (Detail::max_micro_instructions > 0)
