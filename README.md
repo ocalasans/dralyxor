@@ -27,6 +27,7 @@ Construído sobre os alicerces do **C++** moderno (requerendo **C++14** e adapta
     - [Padrões de Uso Essenciais](#padrões-de-uso-essenciais)
       - [Padrão 1: Ofuscação Local (Stack)](#padrão-1-ofuscação-local-stack)
       - [Padrão 2: Ofuscação Estática (Global)](#padrão-2-ofuscação-estática-global)
+      - [Padrão 3: Ofuscação com Chave Fornecida pelo Usuário](#padrão-3-ofuscação-com-chave-fornecida-pelo-usuário)
     - [Tratamento de Erros e Integridade](#tratamento-de-erros-e-integridade)
   - [Filosofia e Arquitetura de Design Detalhada](#filosofia-e-arquitetura-de-design-detalhada)
     - [A Ameaça Persistente: Vulnerabilidade das Strings Literais](#a-ameaça-persistente-vulnerabilidade-das-strings-literais)
@@ -56,6 +57,8 @@ Construído sobre os alicerces do **C++** moderno (requerendo **C++14** e adapta
     - [Macros de Ofuscação](#macros-de-ofuscação)
       - [`DRALYXOR(str_literal)`](#dralyxorstr_literal)
       - [`DRALYXOR_LOCAL(str_literal)`](#dralyxor_localstr_literal)
+      - [`DRALYXOR_KEY(str_literal, key_literal)`](#dralyxor_keystr_literal-key_literal)
+      - [`DRALYXOR_KEY_LOCAL(str_literal, key_literal)`](#dralyxor_key_localstr_literal-key_literal)
     - [Macro de Acesso Seguro](#macro-de-acesso-seguro)
       - [`DRALYXOR_SECURE(obfuscated_var)`](#dralyxor_secureobfuscated_var)
   - [Recursos Avançados e Boas Práticas](#recursos-avançados-e-boas-práticas)
@@ -178,6 +181,32 @@ bool Verify_License(const std::string& user_key) {
 }
 ```
 
+#### Padrão 3: Ofuscação com Chave Fornecida pelo Usuário
+
+Para o nível máximo de segurança, você pode fornecer sua própria string de chave secreta. Isso faz com que a ofuscação dependa de um segredo que só você conhece, tornando-a resistente.
+
+```cpp
+#include "Dralyxor/dralyxor.hpp"
+#include <string>
+
+// A chave nunca deve estar em texto claro em código de produção,
+// idealmente viria de um build script, variável de ambiente, etc.
+#define MY_SUPER_SECRET_KEY "b1d03c4f-a20c-4573-8a39-29c32f3c3a4d"
+
+void Send_Data_To_Secure_Endpoint() {
+    // Ofusca uma URL usando a chave secreta. O macro termina com _KEY.
+    auto secure_endpoint = DRALYXOR_KEY_LOCAL("https://internal.api.mycompany.com/report", MY_SUPER_SECRET_KEY);
+
+    // O uso com Secure_Accessor permanece o mesmo.
+    {
+        auto accessor = DRALYXOR_SECURE(secure_endpoint);
+
+        if (accessor.Get())
+            // httpClient.Post(accessor.Get(), ...);
+    }
+}
+```
+
 ### Tratamento de Erros e Integridade
 
 As funções `Obfuscated_String::Decrypt()` e `Encrypt()` retornam `uint64_t`:
@@ -266,6 +295,7 @@ A robustez do **Dralyxor** emana da sinergia de seus componentes chave:
 O coração da ofuscação estática e dinâmica do **Dralyxor** reside em seu motor de transformação que utiliza "micro-programas" únicos para cada string e contexto.
 
 #### Poder do `consteval` e `constexpr` para Geração em Compilação
+
 O **C++** moderno, com `consteval` (**C++20**) e `constexpr` (**C++11** em diante), permite que código complexo seja executado *durante a compilação*. O **Dralyxor** utiliza `_DRALYXOR_CONSTEVAL` (que mapeia para `consteval` ou `constexpr` dependendo do padrão **C++**) para o construtor `Obfuscated_String` e para a geração do micro-programa.
 
 Isto significa que todo o processo de:
@@ -287,13 +317,12 @@ enum class Micro_Operation_Code : uint8_t {
     ROTR,
     ROTL,
     SWAP_NIB,
-    END_OF_PROGRAM // Embora presente, não é ativamente usado para terminar a execução do micro-programa,
-                   // a iteração é controlada pelo 'num_actual_instructions_in_program_'.
+    END_OF_PROGRAM
 };
 
 struct Micro_Instruction {
-    Micro_Operation_Code op_code; // A operação (XOR, ADD, ROTL, etc.)
-    uint8_t operand;            // O valor usado pela operação
+    Micro_Operation_Code op_code{}; // Inicializador padrão {} para zerar
+    uint8_t operand{};             // Inicializador padrão {} para zerar
 };
 
 // Número máximo de instruções que um micro-programa pode conter.
@@ -350,8 +379,8 @@ A cópia local na stack é destruída ao final da função, e o `micro_program_`
    - `Detail::Micro_Program_Cipher::Transform_Compile_Time_Consistent(storage_, storage_n - 1, this->micro_program_, num_actual_instructions_in_program_, compile_time_seed, false)` é chamada. Esta função:
       - Cria uma cópia de-ofuscada do `this->micro_program_` na stack.
       - Para cada caractere em `storage_` (exceto o nulo):
-          - Gera `prng_key_for_ops_in_elem` e seleciona um `Byte_Transform_Applier`.
-          - Aplica a sequência de micro-instruções (da cópia de-ofuscada) ao caractere, usando o aplicador e o operando modificado.
+         - Gera `prng_key_for_ops_in_elem` e seleciona um `Byte_Transform_Applier`.
+         - Aplica a sequência de micro-instruções (da cópia de-ofuscada) ao caractere, usando o aplicador e o operando modificado.
       - Ao final, `storage_` contém a string ofuscada (ex: `[CF, 3A, D1, ..., 0x00]`).
 4. **Geração de Código:** O compilador aloca espaço para `api_key_obj` e o inicializa diretamente com:
    - `storage_`: `[CF, 3A, D1, ..., 0x00]` (string ofuscada).
@@ -530,9 +559,11 @@ Somente quando `Secure_Accessor::Get()` é chamado pela primeira vez é que esse
 
 #### Limpeza Segura de Memória
 
-Tanto o destrutor de `Obfuscated_String` (via `Clear_Internal_Data`) quanto o destrutor de `Secure_Accessor` (via `Clear_All_Internal_Buffers`) utilizam `Dralyxor::Detail::Secure_Clear_Memory` (template para arrays) ou `Dralyxor::Detail::Secure_Clear_Memory_Raw` (para ponteiros brutos, embora `Secure_Clear_Memory` seja mais usado nos destrutores). Esta função wrapper:
-- Usa `SecureZeroMemory` (Windows User Mode) ou `RtlSecureZeroMemory` (Windows Kernel Mode) quando disponíveis, que são funções do sistema operacional projetadas para não serem otimizadas pelo compilador.
-- Recorre a um loop com um ponteiro `volatile T* p` em outras plataformas ou quando as funções específicas do Windows não estão disponíveis. O `volatile` é uma tentativa de instruir o compilador a não otimizar a escrita de zeros. Isso garante que, quando os objetos são destruídos ou os buffers são explicitamente limpos, o conteúdo sensível é sobrescrito, reduzindo o risco de recuperação de dados.
+Tanto o destrutor de `Obfuscated_String` (via `Clear_Internal_Data`) quanto o destrutor de `Secure_Accessor` (via `Clear_All_Internal_Buffers`) utilizam `Dralyxor::Detail::Secure_Clear_Memory`. Esta função wrapper garante que os buffers contendo dados sensíveis sejam zerados de forma confiável, impedindo a otimização do compilador:
+- **No Windows:** Utiliza `SecureZeroMemory` (User Mode) ou `RtlSecureZeroMemory` (Kernel Mode), que são funções do sistema operacional projetadas especificamente para não serem otimizadas e para zerar a memória de forma segura.
+- **Em Outras Plataformas (Linux, macOS, etc.):** A implementação agora usa `memset` para preencher o bloco de memória com zeros. `memset` opera em nível de bytes, o que o torna ideal e seguro para zerar tanto tipos primitivos (como `char`, `int`) quanto tipos complexos (como `structs`), evitando problemas de compatibilidade de tipo ou de operadores de atribuição. Para garantir que a chamada a `memset` não seja otimizada e removida pelo compilador, o ponteiro do buffer é primeiro passado para um ponteiro `volatile`.
+
+Essa abordagem garante que, quando os objetos são destruídos, o conteúdo sensível é sobrescrito, reduzindo o risco de recuperação de dados através de análise de dumps de memória.
 
 ### Componente 3: Defesas em Tempo de Execução (Anti-Debugging e Anti-Tampering)
 
@@ -626,20 +657,32 @@ A segurança de qualquer sistema de cifragem repousa na força e unicidade de su
 
 #### Fontes de Entropia para o `compile_time_seed`
 
-O `static constexpr uint64_t Obfuscated_String::compile_time_seed` é a semente mestra para todas as operações pseudoaleatórias relativas àquela instância da string. Ele é gerado em `consteval` da seguinte forma:
-```cpp
-// Dentro de Obfuscated_String<CharT, storage_n, Instance_Counter>
-static constexpr uint64_t compile_time_seed =
-    Detail::fnv1a_hash(__DATE__ __TIME__) ^     // Componente 1: Variabilidade entre compilações
-    ((uint64_t)Instance_Counter << 32) ^        // Componente 2: Variabilidade dentro de uma unidade de compilação
-    storage_n;                                  // Componente 3: Variabilidade baseada no tamanho da string
-```
+A `static constexpr uint64_t Obfuscated_String::compile_time_seed` é a semente mestra para todas as operações pseudoaleatórias relativas àquela instância da string. Sua geração agora é condicional, baseada na presença de uma chave fornecida pelo usuário:
 
-- **`Detail::fnv1a_hash(__DATE__ __TIME__)`**: O macro `__DATE__` (ex: "Jan 01 2025") e `__TIME__` (ex: "12:30:00") são strings fornecidas pelo pré-processador que mudam cada vez que o arquivo é compilado. O hash FNV-1a desses valores cria uma base de seed que é diferente para cada build do projeto.
-- **`Instance_Counter` (alimentado por `__COUNTER__` na macro `DRALYXOR`/`DRALYXOR_LOCAL`)**: O macro `__COUNTER__` é um contador mantido pelo pré-processador que incrementa cada vez que é usado dentro de uma unidade de compilação. Ao passar isso como um argumento de template `int Instance_Counter` para `Obfuscated_String`, cada uso do macro `DRALYXOR` ou `DRALYXOR_LOCAL` resultará em um `Instance_Counter` diferente e, portanto, um `compile_time_seed` diferente, mesmo para strings literais idênticas no mesmo arquivo de origem.
-- **`storage_n` (tamanho da string incluindo o nulo)**: O tamanho da string também é XORado, adicionando mais um fator de diferenciação.
+- **Se uma chave é fornecida pelo usuário (usando `DRALYXOR_KEY` ou `DRALYXOR_KEY_LOCAL`):**
+   1. O `key_literal` fornecido é transformado em um hash de 64 bits em tempo de compilação usando o algoritmo FNV-1a.
+   2. Este hash torna-se a base da `compile_time_seed`, combinado com `__COUNTER__` (para garantir a unicidade entre diferentes usos da mesma chave) e o tamanho da string.
+      ```cpp
+      // Lógica simplificada
+      static constexpr uint64_t User_Seed = Dralyxor::Detail::fnv1a_hash(key_literal);
+      static constexpr uint64_t compile_time_seed = User_Seed ^ ((uint64_t)Instance_Counter << 32) ^ storage_n;
+      ```
+      Neste modo, a segurança da ofuscação depende diretamente da força e do sigilo da chave fornecida.
 
-Este `compile_time_seed` é então usado como base para:
+- **Se nenhuma chave é fornecida (usando `DRALYXOR` ou `DRALYXOR_LOCAL`):**
+   - O `compile_time_seed` é gerado usando a combinação dos seguintes fatores para maximizar a entropia e a variabilidade:
+      ```cpp
+      // Dentro de Obfuscated_String<CharT, storage_n, Instance_Counter>
+      static constexpr uint64_t compile_time_seed =
+          Detail::fnv1a_hash(__DATE__ __TIME__) ^     // Componente 1: Variabilidade entre compilações
+          ((uint64_t)Instance_Counter << 32) ^        // Componente 2: Variabilidade dentro de uma unidade de compilação
+          storage_n;                                  // Componente 3: Variabilidade baseada no tamanho da string
+      ```
+   - **`Detail::fnv1a_hash(__DATE__ __TIME__)`**: O macro `__DATE__` (ex: "Jan 01 2025") e `__TIME__` (ex: "12:30:00") são strings fornecidas pelo pré-processador que mudam cada vez que o arquivo é compilado. O hash FNV-1a desses valores cria uma base de seed que é diferente para cada build do projeto.
+   - **`Instance_Counter` (alimentado por `__COUNTER__` na macro)**: O macro `__COUNTER__` é um contador mantido pelo pré-processador que incrementa cada vez que é usado dentro de uma unidade de compilação. Ao passar isso como um argumento de template, cada uso do macro `DRALYXOR` ou `DRALYXOR_LOCAL` resultará em um `Instance_Counter` diferente e, portanto, um `compile_time_seed` diferente, mesmo para strings literais idênticas no mesmo arquivo de origem.
+   - **`storage_n` (tamanho da string)**: O tamanho da string também é XORado, adicionando mais um fator de diferenciação.
+
+Este `compile_time_seed` (seja ele derivado da chave do usuário ou gerado automaticamente) é então usado como base para:
 1. Gerar o `micro_program_` (semeando o PRNG com `compile_time_seed ^ 0xDEADBEEFC0FFEEULL`).
 2. Derivar a chave de ofuscação para o próprio `micro_program_` (via `Detail::Get_Micro_Program_Obfuscation_Key`).
 3. Derivar a chave de ofuscação para o `_content_checksum_obfuscated` (via `Detail::Obfuscate_Deobfuscate_Short_Value`).
@@ -655,8 +698,8 @@ Isso introduz um dinamismo adicional na transformação de cada caractere, mesmo
 
 #### Imunidade Contra Ataques de "Replay" e Análise de Padrões
 
-- **Unicidade Inter-Compilação:** Se um atacante analisar o binário da versão 1.0 do seu software e, com muito esforço, conseguir quebrar a ofuscação de uma string, essa conhecimento será provavelmente inútil para a versão 1.1, pois o `__DATE__ __TIME__` terá mudado, resultando em `compile_time_seed`s e micro-programas completamente diferentes.
-- **Unicidade Intra-Compilação:** Se você usar `DRALYXOR("AdminPassword")` em dois lugares diferentes no seu código (ou no mesmo arquivo .cpp), o `__COUNTER__` garantirá que os objetos `Obfuscated_String` resultantes, e portanto suas representações ofuscadas no binário (tanto o `storage_` quanto o `micro_program_`), sejam diferentes. Isso impede que um atacante encontre um padrão ofuscado e o use para localizar todas as outras ocorrências da mesma string original, ou use um micro-programa descoberto para decifrar outras strings.
+- **Unicidade Inter-Compilação:** Se um atacante analisar o binário da versão 1.0 do seu software e, com muito esforço, conseguir quebrar a ofuscação de uma string (no modo de chave automática), esse conhecimento será provavelmente inútil para a versão 1.1, pois o `__DATE__ __TIME__` terá mudado, resultando em `compile_time_seed`s e micro-programas completamente diferentes.
+- **Unicidade Intra-Compilação:** Se você usar `DRALYXOR("AdminPassword")` em dois lugares diferentes no seu código (ou no mesmo arquivo .cpp), o `__COUNTER__` garantirá que os objetos `Obfuscated_String` resultantes, e portanto suas representações ofuscadas no binário, sejam diferentes. Isso impede que um atacante encontre um padrão ofuscado e o use para localizar todas as outras ocorrências da mesma string original.
 
 Esta geração robusta de sementes é uma pedra angular da segurança do **Dralyxor** contra ataques que dependem de descobrir um "segredo mestre" ou de explorar a repetição de cifras e transformações.
 
@@ -670,22 +713,14 @@ Estes são os principais pontos de entrada para criar strings ofuscadas.
 
 - **Propósito:** Cria um objeto `Obfuscated_String` com tempo de vida estático (existe durante toda a execução do programa). Ideal para constantes globais ou strings que precisam ser acessadas de múltiplos locais e persistir.
 - **Armazenamento:** Memória estática (normalmente na seção de dados do programa).
-- **Implementação (simplificada):**
+- **Implementação:**
    ```cpp
    #define DRALYXOR(str_literal) \
        []() -> auto& { \
-           /* A macro __COUNTER__ garante um Instance_Counter único para cada uso */ \
-           /* decltype(*str_literal) infere o tipo de caractere (char, wchar_t) */ \
-           /* (sizeof(str_literal) / sizeof(decltype(*str_literal))) calcula o tamanho incluindo o nulo */ \
-           static auto obfuscated_static_string = Dralyxor::Obfuscated_String< \
-               typename Dralyxor::Detail::Fallback::decay<decltype(*str_literal)>::type, \
-               (sizeof(str_literal) / sizeof(decltype(*str_literal))), \
-               __COUNTER__ \
-           >(str_literal); \
+           static auto obfuscated_static_string = Dralyxor::Obfuscated_String<typename Dralyxor::Detail::Fallback::decay<decltype(*str_literal)>::type, (sizeof(str_literal) / sizeof(decltype(*str_literal))), __COUNTER__>(str_literal); \
            return obfuscated_static_string; \
        }()
    ```
-
 - **Parâmetros:**
    - `str_literal`: Um literal de string C-style (e.g., `"Hello World"`, `L"Unicode String"`).
 - **Retorno:** Uma referência (`auto&`) ao objeto `Obfuscated_String` estático, criado dentro de uma lambda imediatamente invocada.
@@ -699,14 +734,9 @@ Estes são os principais pontos de entrada para criar strings ofuscadas.
 
 - **Propósito:** Cria um objeto `Obfuscated_String` com tempo de vida automático (normalmente na stack, se usado dentro de uma função). Ideal para segredos temporários confinados a um escopo.
 - **Armazenamento:** Automático (stack para variáveis locais de função).
-- **Implementação (simplificada):**
+- **Implementação:**
    ```cpp
-   #define DRALYXOR_LOCAL(str_literal) \
-       Dralyxor::Obfuscated_String< \
-           typename Dralyxor::Detail::Fallback::decay<decltype(*str_literal)>::type, \
-           (sizeof(str_literal) / sizeof(decltype(*str_literal))), \
-           __COUNTER__ \
-       >(str_literal)
+   #define DRALYXOR_LOCAL(str_literal) Dralyxor::Obfuscated_String<typename Dralyxor::Detail::Fallback::decay<decltype(*str_literal)>::type, (sizeof(str_literal) / sizeof(decltype(*str_literal))), __COUNTER__>(str_literal)
    ```
 - **Parâmetros:**
    - `str_literal`: Um literal de string C-style.
@@ -719,17 +749,46 @@ Estes são os principais pontos de entrada para criar strings ofuscadas.
    } // temp_key é destruído aqui, seu destrutor chama Clear_Internal_Data().
    ```
 
+#### `DRALYXOR_KEY(str_literal, key_literal)`
+
+- **Propósito:** Similar ao `DRALYXOR`, cria um objeto `Obfuscated_String` estático, mas usa uma **chave fornecida pelo usuário** (`key_literal`) para semear a ofuscação, oferecendo o mais alto nível de segurança.
+- **Armazenamento:** Memória estática (normalmente na seção de dados do programa).
+- **Implementação:**
+   ```cpp
+   #define DRALYXOR_KEY(str_literal, key_literal) \
+       []() -> auto& { \
+           static auto obfuscated_static_string_with_key = Dralyxor::Obfuscated_String<typename Dralyxor::Detail::Fallback::decay<decltype(*str_literal)>::type, (sizeof(str_literal) / sizeof(decltype(*str_literal))), __COUNTER__, Dralyxor::Detail::fnv1a_hash(key_literal)>(str_literal); \
+           return obfuscated_static_string_with_key; \
+       }()
+   ```
+- **Parâmetros:**
+   - `str_literal`: O literal de string a ser ofuscado.
+   - `key_literal`: O literal de string a ser usado como chave secreta.
+- **Retorno:** Uma referência (`auto&`) ao objeto estático `Obfuscated_String`.
+- **Exemplo:** `static auto& g_db_password = DRALYXOR_KEY("pa$$w0rd!", "MySecretAppKey-78d1-41e7-9a4d");`
+
+#### `DRALYXOR_KEY_LOCAL(str_literal, key_literal)`
+
+- **Propósito:** Similar ao `DRALYXOR_LOCAL`, cria um objeto `Obfuscated_String` na stack, usando uma **chave fornecida pelo usuário**.
+- **Armazenamento:** Automático (stack para variáveis locais de função).
+- **Implementação:**
+   ```cpp
+   #define DRALYXOR_KEY_LOCAL(str_literal, key_literal) Dralyxor::Obfuscated_String<typename Dralyxor::Detail::Fallback::decay<decltype(*str_literal)>::type, (sizeof(str_literal) / sizeof(decltype(*str_literal))), __COUNTER__, Dralyxor::Detail::fnv1a_hash(key_literal)>(str_literal)
+   ```
+- **Parâmetros:**
+   - `str_literal`: O literal de string a ser ofuscado.
+   - `key_literal`: O literal de string a ser usado como chave.
+- **Retorno:** Um objeto `Obfuscated_String` por valor.
+- **Exemplo:** `auto temp_token = DRALYXOR_KEY_LOCAL("TempAuthToken", "SessionSpecificSecret-a1b2");`
+
 ### Macro de Acesso Seguro
 
 #### `DRALYXOR_SECURE(obfuscated_var)`
 
 - **Propósito:** Fornece acesso seguro e temporário ao conteúdo decifrado de um objeto `Obfuscated_String`. Este é o **único método recomendado** para ler a string.
-- **Implementação (simplificada):**
+- **Implementação:**
    ```cpp
-   #define DRALYXOR_SECURE(obfuscated_var) \
-       Dralyxor::Secure_Accessor< \
-           typename Dralyxor::Detail::Fallback::decay<decltype(obfuscated_var)>::type \
-       >(obfuscated_var)
+   #define DRALYXOR_SECURE(obfuscated_var) Dralyxor::Secure_Accessor<typename Dralyxor::Detail::Fallback::decay<decltype(obfuscated_var)>::type>(obfuscated_var)
    ```
 
 - **Parâmetros:**
@@ -790,7 +849,7 @@ Isso garante que todos os bytes do `wchar_t` sejam afetados pela ofuscação, me
 Conforme mencionado, o **Dralyxor** se adapta:
 - **Padrões C++:** Requer no mínimo **C++14**. Detecta e utiliza recursos de **C++17** e **C++20** (como `if constexpr`, `consteval`, sufixos `_v` para `type_traits`) quando o compilador os suporta, recorrendo a alternativas **C++14** caso contrário. Macros como `_DRALYXOR_IF_CONSTEXPR` e `_DRALYXOR_CONSTEVAL` em `detection.hpp` gerenciam essa adaptação.
 - **Kernel Mode:** Quando `_KERNEL_MODE` é definido (típico em projetos WDK para drivers do Windows), o **Dralyxor** (via `env_traits.hpp`) evita incluir cabeçalhos padrão da STL como `<type_traits>` que podem não estar disponíveis ou se comportar de forma diferente. Em vez disso, ele usa suas próprias implementações `constexpr` de ferramentas básicas como `Dralyxor::Detail::Fallback::decay` e `Dralyxor::Detail::Fallback::remove_reference`. Isso permite o uso seguro do **Dralyxor** para proteger strings em componentes de sistema de baixo nível.
-   - Similarmente, `secure_memory.hpp` usa `RtlSecureZeroMemory` em Kernel Mode.
+   - Similarmente, `secure_memory.hpp` usa `RtlSecureZeroMemory` em Kernel Mode. Para outras plataformas, como o Linux, ele recorre ao uso seguro de `memset` para garantir a limpeza de memória, adaptando-se para ser compatível com diferentes tipos de dados.
    - As verificações anti-debug de User Mode (como `IsDebuggerPresent`, `NtQueryInformationProcess`, `OutputDebugString`) são desabilitadas (`#if !defined(_KERNEL_MODE)`) em Kernel Mode, pois não se aplicam ou têm equivalentes diferentes. As checagens de timing ainda podem ter algum efeito, mas a principal linha de defesa em Kernel Mode é a ofuscação em si.
 
 ### Considerações de Performance e Overhead

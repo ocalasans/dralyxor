@@ -23,10 +23,11 @@ Construit sur les fondations du **C++** moderne (nécessitant **C++14** et s'ada
   - [Table des matières](#table-des-matières)
   - [Guide d'Intégration et d'Utilisation Rapide](#guide-dintégration-et-dutilisation-rapide)
     - [Installation](#installation)
-    - [Exigences du Compilateur](#exigences-du-compilateur)
+    - [Prérequis du Compilateur](#prérequis-du-compilateur)
     - [Modèles d'Utilisation Essentiels](#modèles-dutilisation-essentiels)
-      - [Modèle 1: Obfuscation Locale (Pile)](#modèle-1-obfuscation-locale-pile)
+      - [Modèle 1: Obfuscation Locale (Stack)](#modèle-1-obfuscation-locale-stack)
       - [Modèle 2: Obfuscation Statique (Globale)](#modèle-2-obfuscation-statique-globale)
+      - [Modèle 3: Obfuscation avec une Clé Fournie par l'Utilisateur](#modèle-3-obfuscation-avec-une-clé-fournie-par-lutilisateur)
     - [Gestion des Erreurs et Intégrité](#gestion-des-erreurs-et-intégrité)
   - [Philosophie et Architecture de Conception Détaillée](#philosophie-et-architecture-de-conception-détaillée)
     - [La Menace Persistante: Vulnérabilité des Chaînes Littérales](#la-menace-persistante-vulnérabilité-des-chaînes-littérales)
@@ -37,13 +38,13 @@ Construit sur les fondations du **C++** moderne (nécessitant **C++14** et s'ada
       - [Anatomie d'un Micro-Programme **Dralyxor**](#anatomie-dun-micro-programme-dralyxor)
         - [Génération Aléatoire d'Instructions et Sélection d'Applicateurs](#génération-aléatoire-dinstructions-et-sélection-dapplicateurs)
         - [NOPs Variables et Logiques pour l'Entropie](#nops-variables-et-logiques-pour-lentropie)
-      - [Obfuscation du Micro-Programme Lui-même](#obfuscation-du-micro-programme-lui-même)
+      - [Obfuscation du Micro-Programme lui-même](#obfuscation-du-micro-programme-lui-même)
       - [Le Cycle de Vie de l'Obfuscation Statique](#le-cycle-de-vie-de-lobfuscation-statique)
-    - [Composant 2: Accès Sécurisé et Minimisation de l'Exposition en **RAM**](#composant-2-accès-sécurisé-et-minimisation-de-lexposition-en-ram)
+    - [Composant 2: Accès Sécurisé et Minimisation de l'Exposition en RAM](#composant-2-accès-sécurisé-et-minimisation-de-lexposition-en-ram)
       - [Le `Secure_Accessor` et le Principe RAII](#le-secure_accessor-et-le-principe-raii)
-      - [Fragmentation de Mémoire dans le `Secure_Accessor`](#fragmentation-de-mémoire-dans-le-secure_accessor)
+      - [Fragmentation de la Mémoire dans le `Secure_Accessor`](#fragmentation-de-la-mémoire-dans-le-secure_accessor)
       - [Nettoyage Sécurisé de la Mémoire](#nettoyage-sécurisé-de-la-mémoire)
-    - [Composant 3: Défenses en Temps d'Exécution (Anti-Débogage et Anti-Altération)](#composant-3-défenses-en-temps-dexécution-anti-débogage-et-anti-altération)
+    - [Composant 3: Défenses à l'Exécution (Anti-Débogage et Anti-Falsification)](#composant-3-défenses-à-lexécution-anti-débogage-et-anti-falsification)
       - [Détection Multi-Plateforme de Débogueurs](#détection-multi-plateforme-de-débogueurs)
       - [Impact sur l'Opération en Cas de Détection ou de Violation d'Intégrité](#impact-sur-lopération-en-cas-de-détection-ou-de-violation-dintégrité)
       - [Canaris d'Intégrité de l'Objet](#canaris-dintégrité-de-lobjet)
@@ -51,16 +52,18 @@ Construit sur les fondations du **C++** moderne (nécessitant **C++14** et s'ada
     - [Composant 4: Génération de Clés et de Graines Uniques et Imprévisibles](#composant-4-génération-de-clés-et-de-graines-uniques-et-imprévisibles)
       - [Sources d'Entropie pour le `compile_time_seed`](#sources-dentropie-pour-le-compile_time_seed)
       - [Graines Dérivées pour les Transformations de Contenu](#graines-dérivées-pour-les-transformations-de-contenu)
-      - [Immunité Contre les Attaques de "Rejeu" et l'Analyse de Motifs](#immunité-contre-les-attaques-de-rejeu-et-lanalyse-de-motifs)
+      - [Immunité Contre les Attaques de "Replay" et l'Analyse de Motifs](#immunité-contre-les-attaques-de-replay-et-lanalyse-de-motifs)
   - [Référence Complète de l'API Publique](#référence-complète-de-lapi-publique)
     - [Macros d'Obfuscation](#macros-dobfuscation)
       - [`DRALYXOR(str_literal)`](#dralyxorstr_literal)
       - [`DRALYXOR_LOCAL(str_literal)`](#dralyxor_localstr_literal)
+      - [`DRALYXOR_KEY(str_literal, key_literal)`](#dralyxor_keystr_literal-key_literal)
+      - [`DRALYXOR_KEY_LOCAL(str_literal, key_literal)`](#dralyxor_key_localstr_literal-key_literal)
     - [Macro d'Accès Sécurisé](#macro-daccès-sécurisé)
       - [`DRALYXOR_SECURE(obfuscated_var)`](#dralyxor_secureobfuscated_var)
   - [Fonctionnalités Avancées et Bonnes Pratiques](#fonctionnalités-avancées-et-bonnes-pratiques)
-    - [Support Total d'Unicode (Chaînes Larges - `wchar_t`)](#support-total-dunicode-chaînes-larges---wchar_t)
-    - [Adaptation Inteligente aux Standards **C++** et Environnements (Mode Noyau)](#adaptation-inteligente-aux-standards-c-et-environnements-mode-noyau)
+    - [Prise en Charge Complète d'Unicode (Chaînes Larges - `wchar_t`)](#prise-en-charge-complète-dunicode-chaînes-larges---wchar_t)
+    - [Adaptation Intelligente aux Standards **C++** et aux Environnements (Kernel Mode)](#adaptation-intelligente-aux-standards-c-et-aux-environnements-kernel-mode)
     - [Considérations de Performance et de Surcoût](#considérations-de-performance-et-de-surcoût)
     - [Intégration dans une Stratégie de Sécurité en Couches](#intégration-dans-une-stratégie-de-sécurité-en-couches)
   - [Licence](#licence)
@@ -70,13 +73,13 @@ Construit sur les fondations du **C++** moderne (nécessitant **C++14** et s'ada
 
 ### Installation
 
-**Dralyxor** est une bibliothèque `header-only` (uniquement en en-têtes). Aucune compilation préalable ou liaison de bibliothèques (`.lib`/`.a`) n'est nécessaire.
+**Dralyxor** est une bibliothèque **header-only**. Aucune compilation préalable ou liaison de bibliothèques (`.lib`/`.a`) n'est nécessaire.
 
-1.  **Copiez le Répertoire `Dralyxor`:** Obtenez la dernière version de la bibliothèque (clonez le dépôt ou téléchargez le zip) et copiez tout le répertoire `Dralyxor` (contenant tous les fichiers `.hpp`) dans un emplacement accessible par votre projet (par exemple, un dossier `libs/`, `libraries/`, ou `vendor/`).
-2.  **Incluez l'En-tête Principal:** Dans votre code source, incluez l'en-tête principal `dralyxor.hpp`:
-    ```cpp
-    #include "chemin/vers/Dralyxor/dralyxor.hpp"
-    ```
+1. **Copiez le Répertoire `Dralyxor`:** Obtenez la dernière version de la bibliothèque (clonez le dépôt ou téléchargez le zip) et copiez tout le répertoire `Dralyxor` (contenant tous les fichiers `.hpp`) vers un emplacement accessible par votre projet (par exemple, un dossier `libs/`, `libraries/` ou `vendor/`).
+2. **Incluez l'En-tête Principal:** Dans votre code source, incluez l'en-tête principal `dralyxor.hpp`:
+   ```cpp
+   #include "chemin/vers/Dralyxor/dralyxor.hpp"
+   ```
 
 Une structure de projet typique:
 ```
@@ -92,50 +95,50 @@ Une structure de projet typique:
         |-- algorithms.hpp          (Moteur de transformation et micro-programmes)
         |-- anti_debug.hpp          (Détections à l'exécution)
         |-- prng.hpp                (Générateur de nombres pseudo-aléatoires à la compilation)
-        |-- integrity_constants.hpp (Constantes pour vérifications d'intégrité)
+        |-- integrity_constants.hpp (Constantes pour les vérifications d'intégrité)
         |-- secure_memory.hpp       (Nettoyage sécurisé de la mémoire)
         |-- detection.hpp           (Macros de détection de compilateur/standard C++)
-        `-- env_traits.hpp          (Adaptations de type_traits pour environnements restreints)
+        `-- env_traits.hpp          (Adaptations de type_traits pour les environnements restreints)
 ```
 
-### Exigences du Compilateur
+### Prérequis du Compilateur
 
 > [!IMPORTANT]
-> **Dralyxor** a été conçu en mettant l'accent sur le **C++** moderne pour une sécurité et une efficacité maximales au moment de la compilation.
+> **Dralyxor** a été conçu en se concentrant sur le **C++** moderne pour une sécurité et une efficacité maximales à la compilation.
 >
-> - **Standard C++ Minimum: C++14**. La bibliothèque utilise des fonctionnalités telles que `constexpr` généralisé et s'adapte pour `if constexpr` (lorsqu'il est disponible via `_DRALYXOR_IF_CONSTEXPR`).
-> - **Adaptation aux Standards Supérieurs:** Détecte et utilise les optimisations ou syntaxes de **C++17** et **C++20** (comme `consteval`, les suffixes `_v` pour `type_traits`) si le projet est compilé avec ces standards. `_DRALYXOR_CONSTEVAL` correspond à `consteval` en C++20 et `constexpr` en C++14/17, garantissant l'exécution au moment de la compilation lorsque cela est possible.
+> - **Standard C++ Minimum: C++14**. La bibliothèque utilise des fonctionnalités telles que `constexpr` généralisé et s'adapte à `if constexpr` (lorsqu'il est disponible via `_DRALYXOR_IF_CONSTEXPR`).
+> - **Adaptation aux Standards Supérieurs:** Détecte et utilise les optimisations ou les syntaxes de **C++17** et **C++20** (comme `consteval`, les suffixes `_v` pour `type_traits`) si le projet est compilé avec ces standards. Le `_DRALYXOR_CONSTEVAL` est mappé sur `consteval` en C++20 et `constexpr` en C++14/17, garantissant l'exécution à la compilation là où c'est possible.
 > - **Compilateurs Supportés:** Testé principalement avec les versions récentes de MSVC, GCC et Clang.
-> - **Environnement d'Exécution:** Totalement compatible avec les applications en **Mode Utilisateur** (User Mode) et les environnements en **Mode Noyau** (Kernel Mode) (ex: pilotes Windows). En Mode Noyau, où la STL peut ne pas être disponible, **Dralyxor** utilise des implémentations internes pour les `type traits` nécessaires (voir `env_traits.hpp`).
+> - **Environnement d'Exécution:** Entièrement compatible avec les applications **User Mode** et les environnements **Kernel Mode** (ex: pilotes Windows). En Kernel Mode, où la STL peut ne pas être disponible, **Dralyxor** utilise des implémentations internes pour les `type traits` nécessaires (voir `env_traits.hpp`).
 
 ### Modèles d'Utilisation Essentiels
 
-#### Modèle 1: Obfuscation Locale (Pile)
+#### Modèle 1: Obfuscation Locale (Stack)
 
-Idéal pour les chaînes temporaires, confinées à une portée de fonction. La mémoire est automatiquement gérée et nettoyée.
+Idéal pour les chaînes de caractères temporaires, confinées à la portée d'une fonction. La mémoire est automatiquement gérée et nettoyée.
 
 ```cpp
 #include "Dralyxor/dralyxor.hpp" // Ajustez le chemin si nécessaire
 #include <iostream>
 
 void Configure_Logging() {
-    // Clé de formatage de log, utilisée uniquement localement.
+    // Clé de formatage des logs, utilisée uniquement localement.
     auto log_format_key = DRALYXOR_LOCAL("Timestamp={ts}, Level={lvl}, Msg={msg}");
 
     // Accès sécurisé dans une portée limitée
     {
-        // Le Secure_Accessor déobfusque temporairement 'log_format_key' lors de sa construction
-        // (et ré-obfusque 'log_format_key' immédiatement après la copie dans ses tampons internes),
+        // Le Secure_Accessor désobscurcit temporairement 'log_format_key' lors de sa construction
+        // (et ré-obscurcit 'log_format_key' immédiatement après la copie dans ses tampons internes),
         // permet l'accès, et nettoie ses propres tampons à la destruction.
         auto accessor = DRALYXOR_SECURE(log_format_key);
 
-        if (accessor.Get()) { // Vérifiez toujours si Get() ne retourne pas nullptr
+        if (accessor.Get()) { // Toujours vérifier que Get() ne retourne pas nullptr
             std::cout << "Utilisation du format de log: " << accessor.Get() << std::endl;
             // Ex: logger.SetFormat(accessor.Get());
         }
         else
-            std::cerr << "Échec du déchiffrement de log_format_key (altération possible ou détection de débogueur ?)" << std::endl;
-    } // accessor est détruit, ses tampons internes sont nettoyés. log_format_key reste obfusqué.
+            std::cerr << "Échec du déchiffrement de log_format_key (falsification possible ou détection de débogueur ?)" << std::endl;
+    } // accessor est détruit, ses tampons internes sont nettoyés. log_format_key reste obscurci.
       // log_format_key sera détruit à la fin de la fonction Configure_Logging.
 }
 ```
@@ -150,7 +153,7 @@ Pour les constantes qui doivent persister pendant toute la durée de vie du prog
 #include <vector>
 #include <iostream> // Pour l'exemple
 
-// URL de l'API des licences, un secret persistant.
+// URL de l'API de licences, un secret persistant.
 // La macro DRALYXOR() crée un objet statique.
 // La fonction Get_License_Server_URL() retourne une référence à cet objet statique.
 static auto& Get_License_Server_URL() {
@@ -171,20 +174,46 @@ bool Verify_License(const std::string& user_key) {
             success = true; // Simulation de succès pour l'exemple
         }
         else
-            std::cerr << "Échec du déchiffrement de l'URL du serveur de licence (altération possible ou détection de débogueur ?)." << std::endl;
-    } // accessor est détruit, ses tampons sont nettoyés. url_obj_ref (l'Obfuscated_String original) reste obfusqué.
+            std::cerr << "Échec du déchiffrement de l'URL du serveur de licence (falsification possible ou détection de débogueur ?)." << std::endl;
+    } // accessor est détruit, ses tampons sont nettoyés. url_obj_ref (l'Obfuscated_String original) reste obscurci.
 
     return success;
 }
 ```
 
+#### Modèle 3: Obfuscation avec une Clé Fournie par l'Utilisateur
+
+Pour un niveau de sécurité maximal, vous pouvez fournir votre propre chaîne de clé secrète. Cela rend l'obfuscation dépendante d'un secret que vous seul connaissez, la rendant ainsi plus résistante.
+
+```cpp
+#include "Dralyxor/dralyxor.hpp"
+#include <string>
+
+// La clé ne doit jamais être en texte clair dans le code de production,
+// idéalement, elle proviendrait d'un script de build, d'une variable d'environnement, etc.
+#define MY_SUPER_SECRET_KEY "b1d03c4f-a20c-4573-8a39-29c32f3c3a4d"
+
+void Send_Data_To_Secure_Endpoint() {
+    // Obscurcit une URL en utilisant la clé secrète. La macro se termine par _KEY.
+    auto secure_endpoint = DRALYXOR_KEY_LOCAL("https://internal.api.mycompany.com/report", MY_SUPER_SECRET_KEY);
+
+    // L'utilisation avec Secure_Accessor reste la même.
+    {
+        auto accessor = DRALYXOR_SECURE(secure_endpoint);
+
+        if (accessor.Get())
+            // httpClient.Post(accessor.Get(), ...);
+    }
+}
+```
+
 ### Gestion des Erreurs et Intégrité
 
-Les fonctions `Obfuscated_String::Decrypt()` et `Encrypt()` retournent `uint64_t`:
+Les fonctions `Obfuscated_String::Decrypt()` et `Encrypt()` retournent un `uint64_t`:
 - `0` indique le succès.
-- `Dralyxor::Detail::integrity_compromised_magic` (une valeur constante définie dans `integrity_constants.hpp`) indique qu'une vérification d'intégrité a échoué. Cela peut être dû à des canaris de l'objet corrompus, un checksum de contenu incohérent, ou la détection d'un débogueur signalant un environnement hostile.
+- `Dralyxor::Detail::integrity_compromised_magic` (une valeur constante définie dans `integrity_constants.hpp`) indique qu'une vérification d'intégrité a échoué. Cela peut être dû à la corruption des canaris de l'objet, à un checksum de contenu incohérent, ou à la détection d'un débogueur signalant un environnement hostile.
 
-De même, `Secure_Accessor::Get()` (ou sa conversion implicite en `const CharT*`) retournera `nullptr` si l'initialisation du `Secure_Accessor` échoue (par exemple, si le déchiffrement de l'`Obfuscated_String` original échoue) ou si l'intégrité du `Secure_Accessor` (ses propres canaris ou checksums internes) est compromise pendant sa durée de vie.
+De même, `Secure_Accessor::Get()` (ou sa conversion implicite en `const CharT*`) retournera `nullptr` si l'initialisation du `Secure_Accessor` échoue (par exemple, si le déchiffrement de l' `Obfuscated_String` original échoue) ou si l'intégrité du `Secure_Accessor` (ses propres canaris ou checksums internes) est compromise pendant sa durée de vie.
 
 **Il est crucial que votre code vérifie ces retours pour garantir la robustesse et la sécurité de l'application.**
 
@@ -196,11 +225,11 @@ void Example_Error_Handling() {
     auto my_secret = DRALYXOR_LOCAL("Important Data!");
 
     // Vous n'appelleriez généralement PAS Decrypt() et Encrypt() directement,
-    // car le Secure_Accessor gère cela. Mais si besoin pour une raison quelconque:
+    // car le Secure_Accessor gère cela. Mais si vous en avez besoin pour une raison quelconque:
     if (my_secret.Decrypt() != 0) {
-        std::cerr << "ALERTE: Échec du déchiffrement de 'my_secret' ou intégrité compromise pendant Decrypt()!" << std::endl;
-        // Prenez une action appropriée: terminer, logger de manière sécurisée, etc.
-        // L'objet my_secret.storage_ peut être dans un état invalide ou contenir des déchets.
+        std::cerr << "ALERTE: Échec du déchiffrement de 'my_secret' ou intégrité compromise pendant Decrypt() !" << std::endl;
+        // Prenez une mesure appropriée: terminez, loguez de manière sécurisée, etc.
+        // L'objet my_secret.storage_ peut être dans un état invalide ou contenir des données aléatoires.
         return; // Évitez d'utiliser my_secret si Decrypt() échoue.
     }
 
@@ -208,29 +237,29 @@ void Example_Error_Handling() {
     // **L'ACCÈS DIRECT À storage_ EST FORTEMENT DÉCONSEILLÉ EN PRODUCTION.**
     // std::cout << "Données dans my_secret.storage_ (NE FAITES PAS CELA): " << my_secret.storage_ << std::endl;
 
-    // Il est de votre responsabilité de re-chiffrer si vous avez appelé Decrypt() manuellement:
+    // Il est de votre responsabilité de ré-chiffrer si vous avez appelé Decrypt() manuellement:
     if (my_secret.Encrypt() != 0) {
-        std::cerr << "ALERTE: Échec du re-chiffrement de 'my_secret' ou intégrité compromise pendant Encrypt()!" << std::endl;
+        std::cerr << "ALERTE: Échec du ré-chiffrement de 'my_secret' ou intégrité compromise pendant Encrypt() !" << std::endl;
         // État incertain, potentiellement dangereux.
     }
 
     // UTILISATION RECOMMANDÉE avec Secure_Accessor:
     auto another_secret = DRALYXOR_LOCAL("Another Piece of Data!");
     {
-        // Le constructeur de Secure_Accessor appelle another_secret.Decrypt(), copie, puis another_secret.Encrypt().
+        // Le constructeur du Secure_Accessor appelle another_secret.Decrypt(), copie, puis another_secret.Encrypt().
         auto accessor = DRALYXOR_SECURE(another_secret);
         const char* data_ptr = accessor.Get(); // Ou: const char* data_ptr = accessor;
 
         if (data_ptr) {
-            std::cout << "Donnée secrète via Secure_Accessor: " << data_ptr << std::endl;
+            std::cout << "Données secrètes via Secure_Accessor: " << data_ptr << std::endl;
             // Utilisez data_ptr ici
         }
         else {
-            std::cerr << "ALERTE: Secure_Accessor a échoué à s'initialiser ou à obtenir un pointeur vers 'another_secret'!" << std::endl;
+            std::cerr << "ALERTE: Secure_Accessor n'a pas réussi à s'initialiser ou à obtenir le pointeur pour 'another_secret' !" << std::endl;
             // Cela indique que le Decrypt() dans le constructeur de l'accesseur a échoué,
-            // ou qu'il y a eu une altération de l'accesseur (canaris, checksums internes).
+            // ou qu'il y a eu une falsification de l'accesseur (canaris, checksums internes).
         }
-    } // accessor est détruit. Ses tampons sont nettoyés. another_secret reste obfusquée.
+    } // accessor est détruit. Ses tampons sont nettoyés. another_secret reste obscurci.
 }
 ```
 
@@ -266,13 +295,14 @@ La robustesse de **Dralyxor** émane de la synergie de ses composants clés:
 Le cœur de l'obfuscation statique et dynamique de **Dralyxor** réside dans son moteur de transformation qui utilise des "micro-programmes" uniques pour chaque chaîne et contexte.
 
 #### Puissance de `consteval` et `constexpr` pour la Génération à la Compilation
-Le **C++** moderne, avec `consteval` (**C++20**) et `constexpr` (**C++11** et suivants), permet d'exécuter du code complexe *pendant la compilation*. **Dralyxor** utilise `_DRALYXOR_CONSTEVAL` (qui correspond à `consteval` ou `constexpr` selon le standard **C++**) pour le constructeur `Obfuscated_String` et pour la génération du micro-programme.
+
+Le **C++** moderne, avec `consteval` (**C++20**) et `constexpr` (**C++11** et suivants), permet d'exécuter du code complexe *pendant la compilation*. **Dralyxor** utilise `_DRALYXOR_CONSTEVAL` (qui correspond à `consteval` ou `constexpr` selon le standard **C++**) pour le constructeur de `Obfuscated_String` et pour la génération du micro-programme.
 
 Cela signifie que tout le processus de:
 1. Générer une séquence pseudo-aléatoire d'instructions de transformation (le micro-programme).
-2. Obfusquer le micro-programme lui-même pour le stockage.
-3. Appliquer ce micro-programme (temporairement désobfusqué) pour transformer la chaîne originale, résultant en sa forme obfusquée.
-Tout cela se passe au moment de la compilation, avant que le binaire ne soit généré.
+2. Obscurcir le micro-programme lui-même pour le stockage.
+3. Appliquer ce micro-programme (temporairement désobscurci) pour transformer la chaîne originale, aboutissant à sa forme obscurcie.
+Tout cela se produit à la compilation, avant que le binaire ne soit généré.
 
 #### Anatomie d'un Micro-Programme **Dralyxor**
 
@@ -280,20 +310,19 @@ Chaque objet `Obfuscated_String` stocke un petit tableau de `Dralyxor::Detail::M
 ```cpp
 // Dans Dralyxor::Detail (algorithms.hpp)
 enum class Micro_Operation_Code : uint8_t {
-    NOP,        // Aucune opération
-    XOR,        // OU exclusif bit à bit
-    ADD,        // Addition
-    SUB,        // Soustraction
-    ROTR,       // Rotation vers la droite
-    ROTL,       // Rotation vers la gauche
-    SWAP_NIB,   // Échanger les quartets (nibbles)
-    END_OF_PROGRAM // Bien que présent, n'est pas activement utilisé pour terminer l'exécution du micro-programme,
-                   // l'itération est contrôlée par 'num_actual_instructions_in_program_'.
+    NOP,
+    XOR,
+    ADD,
+    SUB,
+    ROTR,
+    ROTL,
+    SWAP_NIB,
+    END_OF_PROGRAM
 };
 
 struct Micro_Instruction {
-    Micro_Operation_Code op_code; // L'opération (XOR, ADD, ROTL, etc.)
-    uint8_t operand;            // La valeur utilisée par l'opération
+    Micro_Operation_Code op_code{}; // L'initialisateur par défaut {} met à zéro
+    uint8_t operand{};             // L'initialisateur par défaut {} met à zéro
 };
 
 // Nombre maximal d'instructions qu'un micro-programme peut contenir.
@@ -303,15 +332,14 @@ La fonction `_DRALYXOR_CONSTEVAL void Obfuscated_String::Generate_Micro_Program_
 
 ##### Génération Aléatoire d'Instructions et Sélection d'Applicateurs
 
-- **Génération d'Instructions:** Utilisant un `Dralyxor::Detail::Constexpr_PRNG` (initialisé avec une combinaison du `compile_time_seed` et de `0xDEADBEEFC0FFEEULL`), la fonction `Generate_Micro_Program_Instructions` choisit probabilistiquement une séquence d'opérations:
-   - `XOR`: OU exclusif bit à bit avec l'opérande.
+- **Génération d'Instructions:** En utilisant un `Dralyxor::Detail::Constexpr_PRNG` (initialisé avec une combinaison du `compile_time_seed` et de `0xDEADBEEFC0FFEEULL`), la fonction `Generate_Micro_Program_Instructions` choisit de manière probabiliste une séquence d'opérations:
+   - `XOR`: XOR au niveau du bit avec l'opérande.
    - `ADD`: Addition modulaire avec l'opérande.
    - `SUB`: Soustraction modulaire avec l'opérande.
    - `ROTR`/`ROTL`: Rotation de bits. L'opérande (après modulo) définit le nombre de décalages (1 à 7).
-   - `SWAP_NIB`: Échange les 4 bits inférieurs avec les 4 bits supérieurs d'un octet (l'opérande est ignoré).
-    Les opérandes pour ces instructions sont également générés pseudo-aléatoirement par le PRNG.
+   - `SWAP_NIB`: Échange les 4 bits inférieurs avec les 4 bits supérieurs d'un octet (l'opérande est ignoré). Les opérandes pour ces instructions sont également générés de manière pseudo-aléatoire par le PRNG.
 
-- **Modification des Opérandes et Sélection des Applicateurs en Temps de Transformation:** Pendant l'application du micro-programme (par `Detail::Micro_Program_Cipher::Transform_Compile_Time_Consistent`), tant lors de l'obfuscation initiale que du déchiffrement à l'exécution:
+- **Modification des Opérandes et Sélection des Applicateurs au Moment de la Transformation:** Pendant l'application du micro-programme (par `Detail::Micro_Program_Cipher::Transform_Compile_Time_Consistent`), tant lors de l'obfuscation initiale que lors de la désobscurcissement à l'exécution:
    - Un `Constexpr_PRNG prng_operand_modifier` (initialisé avec `base_seed`) génère une `prng_key_for_ops_in_elem` pour chaque caractère de la chaîne. L'opérande de la micro-instruction (`instr_orig.operand`) est XORé avec cette clé avant d'être utilisé. Cela garantit que le même micro-programme applique des transformations légèrement différentes pour chaque caractère.
    - Un `Constexpr_PRNG prng_applier_selector` (initialisé avec `base_seed ^ 0xAAAAAAAAAAAAAAAAULL`) choisit un `Byte_Transform_Applier` pour chaque caractère. Il existe actuellement deux styles:
       - `Applier_Style_Direct`: Applique l'opération directement (en l'inversant pour le déchiffrement, comme ADD devient SUB).
@@ -319,55 +347,54 @@ La fonction `_DRALYXOR_CONSTEVAL void Obfuscated_String::Generate_Micro_Program_
 
 ##### NOPs Variables et Logiques pour l'Entropie
 
-Pour augmenter la difficulté d'analyse manuelle du micro-programme, **Dralyxor** insère:
-- **NOPs Explicites:** Instructions `Micro_Operation_Code::NOP` qui ne font rien.
-- **NOPs Logiques:** Paires d'instructions qui s'annulent mutuellement, comme `ADD K` suivi de `SUB K`, ou `ROTL N_BITS` suivi de `ROTR N_BITS`. L'opérande utilisé dans la paire est le même.
+Pour augmenter la difficulté de l'analyse manuelle du micro-programme, **Dralyxor** insère:
+- **NOPs Explicites:** Des instructions `Micro_Operation_Code::NOP` qui ne font rien.
+- **NOPs Logiques:** Des paires d'instructions qui s'annulent mutuellement, comme `ADD K` suivi de `SUB K`, ou `ROTL N_BITS` suivi de `ROTR N_BITS`. L'opérande utilisé dans la paire est le même.
 
-Ces NOPs sont insérés probabilistiquement par `Generate_Micro_Program_Instructions`, remplissant le tableau `micro_program_` et rendant plus difficile de discerner les transformations effectives des opérations de "bruit".
+Ces NOPs sont insérés de manière probabiliste par `Generate_Micro_Program_Instructions`, remplissant le tableau `micro_program_` et rendant plus difficile de discerner les transformations effectives des opérations de "bruit".
 
-#### Obfuscation du Micro-Programme Lui-même
+#### Obfuscation du Micro-Programme lui-même
 
-Après la génération du micro-programme et avant l'obfuscation initiale de la chaîne dans le constructeur `consteval`, le tableau `micro_program_` (contenu dans l'objet `Obfuscated_String`) est lui-même obfusqué. Chaque `op_code` et `operand` dans chaque `Micro_Instruction` est XORé avec une clé dérivée du `compile_time_seed` (utilisant `Detail::Get_Micro_Program_Obfuscation_Key` et `Detail::Obfuscate_Deobfuscate_Instruction`).
+Après la génération du micro-programme et avant l'obfuscation initiale de la chaîne dans le constructeur `consteval`, le tableau `micro_program_` (contenu dans l'objet `Obfuscated_String`) est lui-même obscurci. Chaque `op_code` et `operand` de chaque `Micro_Instruction` est XORé avec une clé dérivée du `compile_time_seed` (en utilisant `Detail::Get_Micro_Program_Obfuscation_Key` et `Detail::Obfuscate_Deobfuscate_Instruction`).
 Cela signifie que, même si un attaquant parvient à vider la mémoire de l'objet `Obfuscated_String`, le micro-programme ne sera pas dans sa forme directement lisible/applicable.
 
-Lorsque `Obfuscated_String::Decrypt()` ou `Encrypt()` sont appelés (ou indirectement par le `Secure_Accessor`), la fonction centrale `Detail::Micro_Program_Cipher::Transform_Compile_Time_Consistent` reçoit ce micro-programme *obfusqué*. Elle procède alors comme suit:
-1. Crée une copie temporaire du micro-programme (`local_plain_program`) sur la pile.
-2. Désobfusque cette copie locale en utilisant la même clé (`program_obf_key`) dérivée de la graine de base passée (qui est, en fin de compte, le `compile_time_seed`).
-3. Utilise ce `local_plain_program` pour transformer les données de la chaîne.
-La copie locale sur la pile est détruite à la fin de la fonction, et le `micro_program_` stocké dans l'objet `Obfuscated_String` reste obfusqué.
+Lorsque `Obfuscated_String::Decrypt()` ou `Encrypt()` sont appelés (ou indirectement par le `Secure_Accessor`), la fonction centrale `Detail::Micro_Program_Cipher::Transform_Compile_Time_Consistent` reçoit ce micro-programme *obscurci*. Elle procède alors comme suit:
+1. Elle crée une copie temporaire du micro-programme (`local_plain_program`) sur la pile.
+2. Elle désobscurcit cette copie locale en utilisant la même clé (`program_obf_key`) dérivée de la graine de base passée (qui est, en fin de compte, le `compile_time_seed`).
+3. Elle utilise ce `local_plain_program` pour transformer les données de la chaîne.
+La copie locale sur la pile est détruite à la fin de la fonction, et le `micro_program_` stocké dans l'objet `Obfuscated_String` reste obscurci.
 
 #### Le Cycle de Vie de l'Obfuscation Statique
 
-1.  **Code Source:** `auto api_key_obj = DRALYXOR_LOCAL("SECRET_API_KEY");`
-2.  **Pré-traitement:** La macro se développe en une instanciation `Dralyxor::Obfuscated_String<char, 15, __COUNTER__>("SECRET_API_KEY");`. (La taille 15 inclut le terminateur nul).
-3.  **Évaluation `_DRALYXOR_CONSTEVAL`:**
-    -   Le compilateur exécute le constructeur `Obfuscated_String`.
-    -   `Initialize_Internal_Canaries()` définit les canaris d'intégrité.
-    -   `Generate_Micro_Program_Instructions()` (initialisé avec `compile_time_seed ^ 0xDEADBEEFC0FFEEULL`) crée une séquence de `Micro_Instruction` et la stocke dans `this->micro_program_` (ex: `[ADD 0x12, XOR 0xAB, NOP, ROTL 3, ...]`). Le nombre réel d'instructions est stocké dans `num_actual_instructions_in_program_`.
-    -   La chaîne originale "SECRET\_API\_KEY" est copiée dans `this->storage_`.
-    -   Un checksum de la chaîne originale "SECRET\_API\_KEY" (excluant le nul) est calculé par `Detail::Calculate_String_Content_Checksum`, puis obfusqué par `Detail::Obfuscate_Deobfuscate_Short_Value` (utilisant `compile_time_seed` et `content_checksum_obf_salt`) et stocké dans `this->_content_checksum_obfuscated`.
-    -   `Obfuscate_Internal_Micro_Program()` est appelée: le `this->micro_program_` est obfusqué sur place (chaque instruction XORée avec `Detail::Get_Micro_Program_Obfuscation_Key(compile_time_seed)`).
-    -   `Detail::Micro_Program_Cipher::Transform_Compile_Time_Consistent(storage_, storage_n - 1, this->micro_program_, num_actual_instructions_in_program_, compile_time_seed, false)` est appelée. Cette fonction:
-        -   Crée une copie désobfusquée de `this->micro_program_` sur la pile.
-        -   Pour chaque caractère dans `storage_` (sauf le nul):
-            -   Génère `prng_key_for_ops_in_elem` et sélectionne un `Byte_Transform_Applier`.
-            -   Applique la séquence de micro-instructions (de la copie désobfusquée) au caractère, en utilisant l'applicateur et l'opérande modifié.
-        -   À la fin, `storage_` contient la chaîne obfusquée (ex: `[CF, 3A, D1, ..., 0x00]`).
-4.  **Génération de Code:** Le compilateur alloue de l'espace pour `api_key_obj` et l'initialise directement avec:
-    -   `storage_`: `[CF, 3A, D1, ..., 0x00]` (chaîne obfusquée).
-    -   `micro_program_`: Le micro-programme *déjà obfusqué*.
-    -   `_content_checksum_obfuscated`: Le checksum du contenu original, *obfusqué*.
-    -   `_internal_integrity_canary1/2`, `decrypted_`, `moved_from_`, `num_actual_instructions_in_program_`.
-    Le littéral `"SECRET_API_KEY"` n'existe plus dans le binaire.
+1. **Code-Source:** `auto api_key_obj = DRALYXOR_LOCAL("SECRET_API_KEY");`
+2. **Pré-traitement:** La macro se développe en une instanciation `Dralyxor::Obfuscated_String<char, 15, __COUNTER__>("SECRET_API_KEY");`. (La taille 15 inclut le terminateur nul).
+3. **Évaluation `_DRALYXOR_CONSTEVAL`:**
+   - Le compilateur exécute le constructeur `Obfuscated_String`.
+   - `Initialize_Internal_Canaries()` définit les canaris d'intégrité.
+   - `Generate_Micro_Program_Instructions()` (initialisé avec `compile_time_seed ^ 0xDEADBEEFC0FFEEULL`) crée une séquence de `Micro_Instruction` et la stocke dans `this->micro_program_` (ex: `[ADD 0x12, XOR 0xAB, NOP, ROTL 3, ...]`). Le nombre réel d'instructions est stocké dans `num_actual_instructions_in_program_`.
+   - La chaîne originale "SECRET\_API\_KEY" est copiée dans `this->storage_`.
+   - Un checksum de la chaîne originale "SECRET\_API\_KEY" (excluant le nul) est calculé par `Detail::Calculate_String_Content_Checksum` puis obscurci par `Detail::Obfuscate_Deobfuscate_Short_Value` (utilisant `compile_time_seed` et `content_checksum_obf_salt`) et stocké dans `this->_content_checksum_obfuscated`.
+   - `Obfuscate_Internal_Micro_Program()` est appelée: `this->micro_program_` est obscurci sur place (chaque instruction XORée avec `Detail::Get_Micro_Program_Obfuscation_Key(compile_time_seed)`).
+   - `Detail::Micro_Program_Cipher::Transform_Compile_Time_Consistent(storage_, storage_n - 1, this->micro_program_, num_actual_instructions_in_program_, compile_time_seed, false)` est appelée. Cette fonction:
+      - Crée une copie désobscurcie de `this->micro_program_` sur la pile.
+      - Pour chaque caractère dans `storage_` (sauf le nul):
+         - Génère `prng_key_for_ops_in_elem` et sélectionne un `Byte_Transform_Applier`.
+         - Applique la séquence de micro-instructions (de la copie désobscurcie) au caractère, en utilisant l'applicateur et l'opérande modifié.
+      - À la fin, `storage_` contient la chaîne obscurcie (ex: `[CF, 3A, D1, ..., 0x00]`).
+4. **Génération de Code:** Le compilateur alloue de l'espace pour `api_key_obj` et l'initialise directement avec:
+   - `storage_`: `[CF, 3A, D1, ..., 0x00]` (chaîne obscurcie).
+   - `micro_program_`: Le micro-programme *déjà obscurci*.
+   - `_content_checksum_obfuscated`: Le checksum du contenu original, *obscurci*.
+   - `_internal_integrity_canary1/2`, `decrypted_`, `moved_from_`, `num_actual_instructions_in_program_`. Le littéral `"SECRET_API_KEY"` n'existe plus dans le binaire.
 
-### Composant 2: Accès Sécurisé et Minimisation de l'Exposition en **RAM**
+### Composant 2: Accès Sécurisé et Minimisation de l'Exposition en RAM
 
 #### Le `Secure_Accessor` et le Principe RAII
 
-La protection au moment de la compilation n'est que la moitié de la bataille. Une fois que la chaîne doit être utilisée, elle doit être déchiffrée. Si cette chaîne déchiffrée reste en mémoire **RAM** pendant une période prolongée, elle devient une cible pour l'analyse dynamique (vidages mémoire, débogueurs).
+La protection à la compilation n'est que la moitié de la bataille. Une fois que la chaîne doit être utilisée, elle doit être déchiffrée. Si cette chaîne déchiffrée reste en mémoire **RAM** pendant une période prolongée, elle devient une cible pour l'analyse dynamique (vidages mémoire, débogueurs).
 
-**Dralyxor** aborde cela avec le `Dralyxor::Secure_Accessor`, une classe qui implémente le modèle **RAII** (Resource Acquisition Is Initialization):
-- **Ressource Acquise:** L'accès temporaire à la chaîne en texte clair, fragmentée et gérée par l'accesseur.
+**Dralyxor** aborde ce problème avec `Dralyxor::Secure_Accessor`, une classe qui implémente le patron de conception **RAII** (Resource Acquisition Is Initialization):
+- **Ressource Acquise:** L'accès temporaire à la chaîne en clair, fragmentée et gérée par l'accesseur.
 - **Objet Gestionnaire:** L'instance de `Secure_Accessor`.
 
 ```cpp
@@ -408,6 +435,7 @@ public:
                         fragments_storage_[i][j] = plain_text_source[source_idx++];
                     else
                         fragments_storage_[i][j] = (CharT)0; // Remplit le reste du tampon du fragment avec des nuls
+
                 }
 
                 if (source_idx >= N_storage)
@@ -419,7 +447,7 @@ public:
         else
             fragments_data_checksum_expected_ = 0;
 
-        // 3. Re-chiffre IMMÉDIATEMENT l'Obfuscated_String original.
+        // 3. Ré-chiffre IMMÉDIATEMENT l'Obfuscated_String original.
         if (parent_ref_.Encrypt() == Detail::integrity_compromised_magic || !Verify_Internal_Accessor_Canaries() || !parent_ref_.Verify_Parent_Canaries()) {
             Clear_All_Internal_Buffers();
             _accessor_integrity_canary1 = 0;
@@ -442,7 +470,7 @@ public:
             return nullptr;
         }
 
-        if (!current_access_ptr_) { // Si c'est le premier appel à Get() ou si a été nettoyé
+        if (!current_access_ptr_) { // Si c'est le premier appel à Get() ou s'il a été nettoyé
             if constexpr (N_storage > 0) { // Reconstruit seulement s'il y a quelque chose à reconstruire
                 size_t buffer_write_idx = 0;
 
@@ -469,7 +497,7 @@ public:
                 
                 fragments_data_checksum_reconstructed_ = Calculate_Current_Fragments_Checksum();
             }
-            else { // Pour N_storage == 0 (chaîne vide, théoriquement), pas de checksums
+            else { // Pour N_storage == 0 (chaîne vide, théoriquement), il n'y a pas de checksums
                 fragments_data_checksum_reconstructed_ = fragments_data_checksum_expected_; // Pour passer la vérification
 
                 if (N_storage > 0)
@@ -501,59 +529,61 @@ public:
 ```
 
 **Flux d'Utilisation avec `DRALYXOR_SECURE`:**
-1.  `auto accessor = DRALYXOR_SECURE(my_obfuscated_string);`
-    -   Le constructeur de `Secure_Accessor` est appelé.
-    -   Il appelle `my_obfuscated_string.Decrypt()`. Cela implique de désobfusquer le `micro_program_` (vers une copie locale), de l'utiliser pour déchiffrer `my_obfuscated_string.storage_`, puis de vérifier les canaris et le checksum du contenu déchiffré par rapport à celui attendu.
-    -   En cas de succès, le contenu de `my_obfuscated_string.storage_` (maintenant en texte clair) est copié et divisé dans les `fragments_storage_` internes du `Secure_Accessor`.
-    -   Un checksum des `fragments_storage_` (`fragments_data_checksum_expected_`) est calculé.
-    -   Crucialement, `my_obfuscated_string.Encrypt()` est appelé *immédiatement après*, ré-obfusquant `my_obfuscated_string.storage_`.
-2.  `const char* ptr = accessor.Get();` (ou `const char* ptr = accessor;` en raison de la conversion implicite)
-    -   `Secure_Accessor::Get()` est appelé.
-    -   Il vérifie ses propres canaris d'intégrité et ceux de l'`Obfuscated_String` parent.
-    -   Si c'est le premier accès (`current_access_ptr_` est `nullptr`), il reconstruit la chaîne complète dans `reconstructed_plain_buffer_` à partir des `fragments_storage_`.
-    -   Il vérifie ensuite `fragments_data_checksum_reconstructed_` par rapport à `fragments_data_checksum_expected_` pour s'assurer que les fragments n'ont pas été altérés pendant que le `Secure_Accessor` existait.
-    -   Si tout est correct, il retourne un pointeur vers `reconstructed_plain_buffer_`.
-3.  La portée de `accessor` se termine (sortie de fonction, fin de bloc `{}`, etc.).
-    -   Le destructeur de `Secure_Accessor` est appelé automatiquement.
-    -   `Clear_All_Internal_Buffers()` est invoqué, ce qui nettoie de manière sécurisée (`Secure_Clear_Memory`) à la fois le `reconstructed_plain_buffer_` et les `fragments_storage_`.
+1. `auto accessor = DRALYXOR_SECURE(my_obfuscated_string);`
+   - Le constructeur de `Secure_Accessor` est appelé.
+   - Il appelle `my_obfuscated_string.Decrypt()`. Cela implique de désobscurcir le `micro_program_` (vers une copie locale), de l'utiliser pour déchiffrer `my_obfuscated_string.storage_`, puis de vérifier les canaris et le checksum du contenu déchiffré par rapport à l'attendu.
+   - En cas de succès, le contenu de `my_obfuscated_string.storage_` (maintenant en clair) est copié et divisé dans les `fragments_storage_` internes du `Secure_Accessor`.
+   - Un checksum des `fragments_storage_` (`fragments_data_checksum_expected_`) est calculé.
+   - Crucialement, `my_obfuscated_string.Encrypt()` est appelé *immédiatement après*, ré-obscurcissant `my_obfuscated_string.storage_`.
+2. `const char* ptr = accessor.Get();` (ou `const char* ptr = accessor;` en raison de la conversion implicite)
+   - `Secure_Accessor::Get()` est appelé.
+   - Il vérifie ses propres canaris d'intégrité et ceux de l' `Obfuscated_String` parent.
+   - S'il s'agit du premier accès (`current_access_ptr_` est `nullptr`), il reconstruit la chaîne complète dans `reconstructed_plain_buffer_` à partir des `fragments_storage_`.
+   - Il vérifie ensuite `fragments_data_checksum_reconstructed_` par rapport à `fragments_data_checksum_expected_` pour s'assurer que les fragments n'ont pas été altérés pendant que le `Secure_Accessor` existait.
+   - Si tout est correct, il retourne un pointeur vers `reconstructed_plain_buffer_`.
+3. La portée de `accessor` se termine (sortie de la fonction, fin du bloc `{}`, etc.).
+   - Le destructeur de `Secure_Accessor` est appelé automatiquement.
+   - `Clear_All_Internal_Buffers()` est invoqué, qui nettoie de manière sécurisée (`Secure_Clear_Memory`) à la fois le `reconstructed_plain_buffer_` et les `fragments_storage_`.
 
-Le résultat est que la chaîne en texte clair n'existe dans sa forme complète qu'à l'intérieur du `Secure_Accessor` (dans `reconstructed_plain_buffer_`) et seulement après le premier appel à `Get()`, pour la durée la plus courte possible. La chaîne dans l'objet `Obfuscated_String` original est ré-obfusquée dès que le `Secure_Accessor` copie son contenu pendant la construction.
+Le résultat est que la chaîne en clair n'existe sous sa forme complète qu'à l'intérieur du `Secure_Accessor` (dans le `reconstructed_plain_buffer_`) et seulement après le premier appel à `Get()`, pour la durée la plus courte possible. La chaîne dans l'objet `Obfuscated_String` original est ré-obscurcie dès que le `Secure_Accessor` a copié son contenu lors de sa construction.
 
-#### Fragmentation de Mémoire dans le `Secure_Accessor`
+#### Fragmentation de la Mémoire dans le `Secure_Accessor`
 
-Pour rendre encore plus difficile la localisation de la chaîne complète en texte clair dans la mémoire, le `Secure_Accessor`, lors de sa construction, ne se contente pas de copier la chaîne déchiffrée, mais la divise:
-1.  La chaîne de l'`Obfuscated_String` parent est déchiffrée.
-2.  Son contenu est divisé en jusqu'à `fragment_count_val` (actuellement 4, si la chaîne est suffisamment grande) morceaux, qui sont copiés dans `fragments_storage_[i]`.
-3.  La chaîne dans l'objet `Obfuscated_String` parent est ré-obfusquée.
+Pour rendre encore plus difficile la localisation de la chaîne complète en clair en mémoire, le `Secure_Accessor`, lors de sa construction, ne se contente pas de copier la chaîne déchiffrée, il la divise:
+1. La chaîne de l' `Obfuscated_String` parent est déchiffrée.
+2. Son contenu est divisé en jusqu'à `fragment_count_val` (actuellement 4, si la chaîne est assez grande) morceaux, qui sont copiés dans `fragments_storage_[i]`.
+3. La chaîne dans l'objet `Obfuscated_String` parent est ré-obscurcie.
 
-Ce n'est que lorsque `Secure_Accessor::Get()` est appelé pour la première fois que ces fragments sont ré-assemblés dans le `reconstructed_plain_buffer_`. Cette technique vise à "disperser" les données sensibles, frustrant les balayages de mémoire qui recherchent des chaînes continues.
+Ce n'est que lorsque `Secure_Accessor::Get()` est appelé pour la première fois que ces fragments sont ré-assemblés dans le `reconstructed_plain_buffer_`. Cette technique vise à "disperser" les données sensibles, contrecarrant les balayages de mémoire qui recherchent des chaînes continues.
 
 #### Nettoyage Sécurisé de la Mémoire
 
-Tant le destructeur de `Obfuscated_String` (via `Clear_Internal_Data`) que le destructeur de `Secure_Accessor` (via `Clear_All_Internal_Buffers`) utilisent `Dralyxor::Detail::Secure_Clear_Memory` (template pour les tableaux) ou `Dralyxor::Detail::Secure_Clear_Memory_Raw` (pour les pointeurs bruts, bien que `Secure_Clear_Memory` soit plus utilisé dans les destructeurs). Cette fonction wrapper:
--   Utilise `SecureZeroMemory` (Windows Mode Utilisateur) ou `RtlSecureZeroMemory` (Windows Mode Noyau) lorsqu'ils sont disponibles, qui sont des fonctions du système d'exploitation conçues pour ne pas être optimisées par le compilateur.
--   Recourt à une boucle avec un pointeur `volatile T* p` sur d'autres plateformes ou lorsque les fonctions spécifiques à Windows ne sont pas disponibles. Le `volatile` est une tentative d'instruire le compilateur de ne pas optimiser l'écriture de zéros. Cela garantit que, lorsque les objets sont détruits ou les tampons explicitement nettoyés, le contenu sensible est écrasé, réduisant le risque de récupération de données.
+Tant le destructeur de `Obfuscated_String` (via `Clear_Internal_Data`) que le destructeur de `Secure_Accessor` (via `Clear_All_Internal_Buffers`) utilisent `Dralyxor::Detail::Secure_Clear_Memory`. Cette fonction wrapper garantit que les tampons contenant des données sensibles sont remis à zéro de manière fiable, en empêchant l'optimisation du compilateur:
+- **Sur Windows:** Utilise `SecureZeroMemory` (User Mode) ou `RtlSecureZeroMemory` (Kernel Mode), qui sont des fonctions du système d'exploitation conçues spécifiquement pour ne pas être optimisées et pour mettre la mémoire à zéro en toute sécurité.
+- **Sur d'autres plateformes (Linux, macOS, etc.):** L'implémentation utilise maintenant `memset` pour remplir le bloc de mémoire avec des zéros. `memset` opère au niveau de l'octet, ce qui le rend idéal et sûr pour mettre à zéro des types primitifs (comme `char`, `int`) ainsi que des types complexes (comme les `struct`), évitant ainsi les problèmes de compatibilité de type ou d'opérateurs d'affectation. Pour garantir que l'appel à `memset` n'est pas optimisé et supprimé par le compilateur, le pointeur du tampon est d'abord passé à un pointeur `volatile`.
 
-### Composant 3: Défenses en Temps d'Exécution (Anti-Débogage et Anti-Altération)
+Cette approche garantit que, lorsque les objets sont détruits, le contenu sensible est écrasé, réduisant le risque de récupération des données par l'analyse des vidages mémoire.
 
-**Dralyxor** ne se fie pas uniquement à l'obfuscation. Il emploie un ensemble de défenses actives en temps d'exécution, principalement situées dans `anti_debug.hpp` et intégrées dans les méthodes `Decrypt()` et `Encrypt()` de `Obfuscated_String`.
+### Composant 3: Défenses à l'Exécution (Anti-Débogage et Anti-Falsification)
+
+**Dralyxor** ne se fie pas seulement à l'obfuscation. Il emploie un ensemble de défenses actives à l'exécution, principalement situées dans `anti_debug.hpp` et intégrées dans les méthodes `Decrypt()` et `Encrypt()` de l' `Obfuscated_String`.
 
 #### Détection Multi-Plateforme de Débogueurs
 
 La fonction `Detail::Is_Debugger_Present_Tracer_Pid_Sysctl()` (dans `anti_debug.hpp`) vérifie la présence d'un débogueur en utilisant des techniques spécifiques au système d'exploitation:
 - **Windows:** `IsDebuggerPresent()`, `NtQueryInformationProcess` pour `ProcessDebugPort` (0x07) et `ProcessDebugFlags` (0x1F).
-- **Linux:** Lecture de `/proc/self/status` et vérification de la valeur de `TracerPid:`. Une valeur différente de 0 indique que le processus est en cours de traçage.
+- **Linux:** Lecture de `/proc/self/status` et vérification de la valeur de `TracerPid:`. Une valeur différente de 0 indique que le processus est tracé.
 - **macOS:** Utilisation de `sysctl` avec `CTL_KERN`, `KERN_PROC`, `KERN_PROC_PID` pour obtenir `kinfo_proc` et vérification du drapeau `P_TRACED` dans `kp_proc.p_flag`.
 
 De plus, à l'intérieur de `Detail::Calculate_Runtime_Key_Modifier()`:
-- `Detail::Perform_Timing_Check_Generic()`: Exécute une boucle d'opérations de calcul simples et mesure le temps. Un ralentissement significatif (au-dessus de `timing_threshold_milliseconds = 75ms`) peut indiquer qu'un débogueur est en pas-à-pas ou que des points d'arrêt étendus sont actifs. Dans cette boucle, `Is_Debugger_Present_Tracer_Pid_Sysctl()` est appelé, et une fonction "leurre" `Detail::Canary_Function_For_Breakpoint_Check()` (qui retourne simplement `0xCC`, le code d'instruction pour `int3` / point d'arrêt logiciel) est appelée et son résultat est XORé, rendant l'optimisation difficile et fournissant un emplacement commun pour les points d'arrêt.
-- `Detail::Perform_Output_Debug_String_Trick()` (uniquement Windows Mode Utilisateur): Utilise le comportement de `OutputDebugStringA/W` et `GetLastError()`. Si un débogueur est attaché, `GetLastError()` peut être modifié après l'appel à `OutputDebugString`.
+- `Detail::Perform_Timing_Check_Generic()`: Exécute une boucle d'opérations de calcul simples et mesure le temps. Une lenteur significative (supérieure à `timing_threshold_milliseconds = 75ms`) peut indiquer qu'un débogueur est en mode pas à pas ou que des points d'arrêt étendus sont actifs. À l'intérieur de cette boucle, `Is_Debugger_Present_Tracer_Pid_Sysctl()` est appelé, et une fonction "leurre" `Detail::Canary_Function_For_Breakpoint_Check()` (qui retourne simplement `0xCC`, le code d'instruction pour `int3` / point d'arrêt logiciel) est appelée et son résultat est XORé, rendant l'optimisation plus difficile et fournissant un emplacement commun pour les points d'arrêt.
+- `Detail::Perform_Output_Debug_String_Trick()` (uniquement en Windows User Mode): Utilise le comportement de `OutputDebugStringA/W` et `GetLastError()`. Si un débogueur est attaché, `GetLastError()` peut être modifié après l'appel à `OutputDebugString`.
 
 #### Impact sur l'Opération en Cas de Détection ou de Violation d'Intégrité
 
-Si l'une des vérifications anti-débogage retourne `true`, ou si les canaris d'intégrité de `Obfuscated_String` (`_internal_integrity_canary1/2`) sont corrompus, la fonction `Detail::Calculate_Runtime_Key_Modifier(_internal_integrity_canary1, _internal_integrity_canary2)` retournera `Detail::integrity_compromised_magic`.
+Si l'une des vérifications anti-débogage retourne `true`, ou si les canaris d'intégrité de l' `Obfuscated_String` (`_internal_integrity_canary1/2`) sont corrompus, la fonction `Detail::Calculate_Runtime_Key_Modifier(_internal_integrity_canary1, _internal_integrity_canary2)` retournera `Detail::integrity_compromised_magic`.
 
-Cette valeur retournée est cruciale dans les fonctions `Obfuscated_String::Decrypt()` et `Encrypt()`:
+Cette valeur de retour est cruciale dans les fonctions `Obfuscated_String::Decrypt()` et `Encrypt()`:
 ```cpp
 // Logique simplifiée de Obfuscated_String::Decrypt()
 uint64_t Obfuscated_String::Decrypt() noexcept {
@@ -573,17 +603,17 @@ uint64_t Obfuscated_String::Decrypt() noexcept {
 
             return Detail::integrity_compromised_magic;
         }
-        // ... Vérifier à nouveau les canaris ...
+        // ... Vérifier les canaris à nouveau ...
 
         // SI runtime_key_mod N'EST PAS integrity_compromised_magic, IL N'EST PAS UTILISÉ POUR CHANGER LA CLÉ DE DÉCHIFFREMENT.
         // La clé de déchiffrement est toujours dérivée du 'compile_time_seed' original.
-        // Le rôle de runtime_key_mod ici est D'AGIR COMME UN INDICATEUR d'environnement hostile.
-        // Si hostile, la fonction retourne integrity_compromised_magic et le déchiffrement ne se poursuit pas ou est inversé.
+        // Le rôle du runtime_key_mod ici est D'AGIR COMME UN INDICATEUR d'un environnement hostile.
+        // Si hostile, la fonction retourne integrity_compromised_magic et le déchiffrement ne se poursuit pas ou est annulé.
         
         // Transform_Compile_Time_Consistent est appelée avec compile_time_seed (et NON avec runtime_key_mod)
         Detail::Micro_Program_Cipher::Transform_Compile_Time_Consistent(storage_, storage_n - 1, micro_program_, num_actual_instructions_in_program_, compile_time_seed, true /* mode déchiffrement */);
         
-        // ... Vérifier à nouveau le checksum et les canaris ...
+        // ... Vérifier le checksum et les canaris à nouveau ...
         // Si quelque chose échoue, Clear_Internal_Data() et retourne integrity_compromised_magic.
         decrypted_ = true;
     }
@@ -592,8 +622,8 @@ uint64_t Obfuscated_String::Decrypt() noexcept {
 }
 ```
 
-**Effet Clé:** Si `Calculate_Runtime_Key_Modifier` détecte un problème (débogueur ou canari corrompu) et retourne `integrity_compromised_magic`, les fonctions `Decrypt()` (et de même `Encrypt()`) avortent l'opération, nettoient les données internes de `Obfuscated_String` (y compris `storage_` et `micro_program_`), et retournent `integrity_compromised_magic`. Cela empêche la chaîne d'être correctement déchiffrée (ou re-chiffrée) dans un environnement hostile ou si l'objet a été altéré.
-La chaîne n'est pas déchiffrée "incorrectement" (en données invalides) ; l'opération est simplement empêchée, et l'objet `Obfuscated_String` s'auto-détruit en termes de contenu utile.
+**Effet Clé:** Si `Calculate_Runtime_Key_Modifier` détecte un problème (débogueur ou canari corrompu) et retourne `integrity_compromised_magic`, les fonctions `Decrypt()` (et de même `Encrypt()`) abandonnent l'opération, nettoient les données internes de l' `Obfuscated_String` (y compris `storage_` et `micro_program_`), et retournent `integrity_compromised_magic`. Cela empêche la chaîne d'être correctement déchiffrée (ou re-chiffrée) dans un environnement hostile ou si l'objet a été falsifié.
+La chaîne n'est pas déchiffrée "incorrectement" (en données aléatoires) ; l'opération est simplement empêchée, et l'objet `Obfuscated_String` s'autodétruit en termes de contenu utile.
 
 #### Canaris d'Intégrité de l'Objet
 
@@ -603,44 +633,56 @@ Les deux classes `Obfuscated_String` et `Secure_Accessor` contiennent des membre
 
 Ces canaris sont vérifiés à des points critiques:
 - Début et fin de `Obfuscated_String::Decrypt()` et `Encrypt()`.
-- Constructeur, destructeur et `Get()` de `Secure_Accessor`.
+- Constructeur, destructeur et `Get()` du `Secure_Accessor`.
 - Avant et après les vérifications anti-débogage dans `Calculate_Runtime_Key_Modifier`.
 
-Si ces valeurs canaris sont modifiées (par exemple, par un dépassement de tampon, un patch mémoire indiscriminé, ou un hook qui écrase la mémoire adjacente), la vérification (`Verify_Internal_Canaries()` ou `Verify_Internal_Accessor_Canaries()`) échouera.
-En cas d'échec, les opérations sont avortées, les données internes pertinentes sont nettoyées, et une valeur d'erreur (`Detail::integrity_compromised_magic` ou `nullptr`) est retournée, signalant une altération.
+Si ces valeurs canaris sont modifiées (par exemple, par un débordement de tampon, un patch de mémoire indiscriminé, ou un hook qui écrase la mémoire adjacente), la vérification (`Verify_Internal_Canaries()` ou `Verify_Internal_Accessor_Canaries()`) échouera.
+En cas d'échec, les opérations sont abandonnées, les données internes pertinentes sont nettoyées, et une valeur d'erreur (`Detail::integrity_compromised_magic` ou `nullptr`) est retournée, signalant une falsification.
 
 #### Checksum du Contenu de la Chaîne
 
-- Un checksum de 16 bits de la chaîne *originale en texte clair* (excluant le terminateur nul) est calculé par `Detail::Calculate_String_Content_Checksum` au moment de la compilation.
-- Ce checksum est ensuite obfusqué en utilisant `Detail::Obfuscate_Deobfuscate_Short_Value` (avec `compile_time_seed` et `content_checksum_obf_salt`) et stocké dans `_content_checksum_obfuscated` dans l'objet `Obfuscated_String`.
-- **Au Déchiffrement (`Decrypt()`):** Après que `storage_` a été transformé (supposément en texte clair), son checksum est calculé. Le `_content_checksum_obfuscated` est désobfusqué pour obtenir le checksum de référence. Si les deux checksums ne correspondent pas, cela indique que:
-   - Le déchiffrement n'a pas restauré la chaîne originale (peut-être parce que l'opération a été avortée en raison de la détection d'un débogueur avant la transformation complète, ou il y a eu corruption de la graine/microprogramme).
-   - Le `storage_` (lorsqu'il est obfusqué) ou le `_content_checksum_obfuscated` ont été altérés en mémoire.
-- **Au Chiffrement (`Encrypt()`):** Avant que `storage_` (qui est en texte clair à ce stade) ne soit retransformé dans sa forme obfusquée, son checksum est calculé et comparé à celui de référence. Une divergence ici signifierait que la chaîne en texte clair a été modifiée *à l'intérieur du `storage_` de l'`Obfuscated_String` alors qu'elle était déchiffrée*, ce qui est une forte indication d'altération de la mémoire ou d'une utilisation incorrecte (puisque l'accès à `storage_` ne doit pas être direct).
+- Un checksum de 16 bits de la chaîne *originale en clair* (excluant le terminateur nul) est calculé par `Detail::Calculate_String_Content_Checksum` à la compilation.
+- Ce checksum est ensuite obscurci en utilisant `Detail::Obfuscate_Deobfuscate_Short_Value` (avec `compile_time_seed` et `content_checksum_obf_salt`) et stocké dans `_content_checksum_obfuscated` dans l'objet `Obfuscated_String`.
+- **Lors du Déchiffrement (`Decrypt()`):** Après que `storage_` a été transformé (supposément en clair), son checksum est calculé. `_content_checksum_obfuscated` est désobscurci pour obtenir le checksum de référence. Si les deux checksums ne correspondent pas, cela indique que:
+   - Le déchiffrement n'a pas restauré la chaîne originale (peut-être parce que l'opération a été abandonnée en raison de la détection d'un débogueur avant la transformation complète, ou il y a eu une corruption de la graine/du microprogramme).
+   - `storage_` (lorsqu'il est obscurci) ou `_content_checksum_obfuscated` ont été falsifiés en mémoire.
+- **Lors du Chiffrement (`Encrypt()`):** Avant que `storage_` (qui est en clair à ce stade) ne soit re-transformé dans sa forme obscurcie, son checksum est calculé et comparé à celui de référence. une divergence ici signifierait que la chaîne en clair a été modifiée *à l'intérieur de `storage_` de `Obfuscated_String` pendant qu'elle était déchiffrée*, ce qui est une forte indication de falsification de la mémoire ou d'une utilisation inappropriée (puisque l'accès à `storage_` ne doit pas être fait directement).
 
-Dans les deux cas d'échec du checksum, `Clear_Internal_Data()` est appelé et `integrity_compromised_magic` est retourné.
+Dans les deux cas d'échec de checksum, `Clear_Internal_Data()` est appelée et `integrity_compromised_magic` est retournée.
 
 ### Composant 4: Génération de Clés et de Graines Uniques et Imprévisibles
 
-La sécurité de tout système de chiffrement repose sur la force et l'unicité de ses clés et graines. **Dralyxor** garantit que chaque chaîne obfusquée utilise un ensemble de paramètres de chiffrement fondamentalement unique.
+La sécurité de tout système de chiffrement repose sur la force et l'unicité de ses clés et graines. **Dralyxor** garantit que chaque chaîne obscurcie utilise un ensemble de paramètres de chiffrement fondamentalement unique.
 
 #### Sources d'Entropie pour le `compile_time_seed`
 
-Le `static constexpr uint64_t Obfuscated_String::compile_time_seed` est la graine maîtresse pour toutes les opérations pseudo-aléatoires relatives à cette instance de la chaîne. Il est généré en `consteval` de la manière suivante:
-```cpp
-// À l'intérieur de Obfuscated_String<CharT, storage_n, Instance_Counter>
-static constexpr uint64_t compile_time_seed =
-    Detail::fnv1a_hash(__DATE__ __TIME__) ^     // Composant 1: Variabilité entre compilations
-    ((uint64_t)Instance_Counter << 32) ^        // Composant 2: Variabilité au sein d'une unité de compilation
-    storage_n;                                  // Composant 3: Variabilité basée sur la taille de la chaîne
-```
+La `static constexpr uint64_t Obfuscated_String::compile_time_seed` est la graine maîtresse pour toutes les opérations pseudo-aléatoires relatives à cette instance de la chaîne. Sa génération est maintenant conditionnelle, basée sur la présence d'une clé fournie par l'utilisateur:
 
-- **`Detail::fnv1a_hash(__DATE__ __TIME__)`**: Les macros `__DATE__` (ex: "Jan 01 2025") et `__TIME__` (ex: "12:30:00") sont des chaînes fournies par le préprocesseur qui changent à chaque compilation du fichier. Le hachage FNV-1a de ces valeurs crée une base de graine différente pour chaque build du projet.
-- **`Instance_Counter` (alimenté par `__COUNTER__` dans la macro `DRALYXOR`/`DRALYXOR_LOCAL`)**: La macro `__COUNTER__` est un compteur maintenu par le préprocesseur qui s'incrémente à chaque utilisation au sein d'une unité de compilation. En le passant comme argument de template `int Instance_Counter` à `Obfuscated_String`, chaque utilisation de la macro `DRALYXOR` ou `DRALYXOR_LOCAL` résultera en un `Instance_Counter` différent et, par conséquent, un `compile_time_seed` différent, même pour des chaînes littérales identiques dans le même fichier source.
-- **`storage_n` (taille de la chaîne incluant le nul)**: La taille de la chaîne est également XORée, ajoutant un autre facteur de différenciation.
+- **Si une clé est fournie par l'utilisateur (en utilisant `DRALYXOR_KEY` ou `DRALYXOR_KEY_LOCAL`):**
+   1. Le `key_literal` fourni est transformé en un hash de 64 bits à la compilation en utilisant l'algorithme FNV-1a.
+   2. Ce hash devient la base du `compile_time_seed`, combiné avec `__COUNTER__` (pour garantir l'unicité entre différentes utilisations de la même clé) et la taille de la chaîne.
+      ```cpp
+      // Logique simplifiée
+      static constexpr uint64_t User_Seed = Dralyxor::Detail::fnv1a_hash(key_literal);
+      static constexpr uint64_t compile_time_seed = User_Seed ^ ((uint64_t)Instance_Counter << 32) ^ storage_n;
+      ```
+      Dans ce mode, la sécurité de l'obfuscation dépend directement de la force et du secret de la clé fournie.
 
-Ce `compile_time_seed` est ensuite utilisé comme base pour:
-1. Générer le `micro_program_` (initialisant le PRNG avec `compile_time_seed ^ 0xDEADBEEFC0FFEEULL`).
+- **Si aucune clé n'est fournie (en utilisant `DRALYXOR` ou `DRALYXOR_LOCAL`):**
+   - Le `compile_time_seed` est généré en utilisant une combinaison des facteurs suivants pour maximiser l'entropie et la variabilité:
+      ```cpp
+      // Dans Obfuscated_String<CharT, storage_n, Instance_Counter>
+      static constexpr uint64_t compile_time_seed =
+          Detail::fnv1a_hash(__DATE__ __TIME__) ^     // Composant 1: Variabilité entre les compilations
+          ((uint64_t)Instance_Counter << 32) ^        // Composant 2: Variabilité au sein d'une unité de compilation
+          storage_n;                                  // Composant 3: Variabilité basée sur la taille de la chaîne
+      ```
+   - **`Detail::fnv1a_hash(__DATE__ __TIME__)`**: Les macros `__DATE__` (ex: "Jan 01 2025") et `__TIME__` (ex: "12:30:00") sont des chaînes fournies par le préprocesseur qui changent chaque fois que le fichier est compilé. Le hash FNV-1a de ces valeurs crée une graine de base qui est différente pour chaque build du projet.
+   - **`Instance_Counter` (alimenté par `__COUNTER__` dans la macro)**: La macro `__COUNTER__` est un compteur maintenu par le préprocesseur qui s'incrémente chaque fois qu'il est utilisé au sein d'une unité de compilation. En passant cela comme un argument de template, chaque utilisation de la macro `DRALYXOR` ou `DRALYXOR_LOCAL` résultera en un `Instance_Counter` différent et donc, un `compile_time_seed` différent, même pour des chaînes littérales identiques dans le même fichier source.
+   - **`storage_n` (taille de la chaîne)**: La taille de la chaîne est également XORée, ajoutant un autre facteur de différenciation.
+
+Ce `compile_time_seed` (qu'il soit dérivé de la clé de l'utilisateur ou généré automatiquement) est ensuite utilisé comme base pour:
+1. Générer le `micro_program_` (en initialisant le PRNG avec `compile_time_seed ^ 0xDEADBEEFC0FFEEULL`).
 2. Dériver la clé d'obfuscation pour le `micro_program_` lui-même (via `Detail::Get_Micro_Program_Obfuscation_Key`).
 3. Dériver la clé d'obfuscation pour le `_content_checksum_obfuscated` (via `Detail::Obfuscate_Deobfuscate_Short_Value`).
 4. Servir de `base_seed` pour `Detail::Micro_Program_Cipher::Transform_Compile_Time_Consistent`.
@@ -648,46 +690,38 @@ Ce `compile_time_seed` est ensuite utilisé comme base pour:
 #### Graines Dérivées pour les Transformations de Contenu
 
 À l'intérieur de `Detail::Micro_Program_Cipher::Transform_Compile_Time_Consistent(CharT* data, ..., uint64_t base_seed, ...)`:
-- Un `Constexpr_PRNG prng_operand_modifier(base_seed)` est initialisé. Pour chaque caractère de la chaîne en cours de transformation, `prng_operand_modifier.Key()` produit une `prng_key_for_ops_in_elem`. Cette clé est XORée avec l'opérande de la micro-instruction avant l'application, garantissant que l'effet de la même micro-instruction est subtilement différent pour chaque caractère.
+- Un `Constexpr_PRNG prng_operand_modifier(base_seed)` est initialisé. Pour chaque caractère de la chaîne en cours de transformation, `prng_operand_modifier.Key()` produit une `prng_key_for_ops_in_elem`. Cette clé est XORée avec l'opérande de la micro-instruction avant son application, garantissant que l'effet de la même micro-instruction est subtilement différent pour chaque caractère.
 - Un `Constexpr_PRNG prng_applier_selector(base_seed ^ 0xAAAAAAAAAAAAAAAAULL)` est initialisé. Pour chaque caractère, `prng_applier_selector.Key()` est utilisé pour choisir entre `Applier_Style_Direct` et `Applier_Style_DoubleLayer`.
 
 Cela introduit un dynamisme supplémentaire dans la transformation de chaque caractère, même si le micro-programme sous-jacent est le même pour tous les caractères d'une chaîne donnée.
 
-#### Immunité Contre les Attaques de "Rejeu" et l'Analyse de Motifs
+#### Immunité Contre les Attaques de "Replay" et l'Analyse de Motifs
 
-- **Unicité Inter-Compilation:** Si un attaquant analyse le binaire de la version 1.0 de votre logiciel et, avec beaucoup d'efforts, parvient à casser l'obfuscation d'une chaîne, cette connaissance sera probablement inutile pour la version 1.1, car `__DATE__ __TIME__` aura changé, résultant en des `compile_time_seed`s et des micro-programmes complètement différents.
-- **Unicité Intra-Compilation:** Si vous utilisez `DRALYXOR("AdminPassword")` à deux endroits différents dans votre code (ou dans le même fichier .cpp), `__COUNTER__` garantira que les objets `Obfuscated_String` résultants, et donc leurs représentations obfusquées dans le binaire (tant le `storage_` que le `micro_program_`), seront différents. Cela empêche un attaquant de trouver un motif obfusqué et de l'utiliser pour localiser toutes les autres occurrences de la même chaîne originale, ou d'utiliser un micro-programme découvert pour déchiffrer d'autres chaînes.
+- **Unicité Inter-Compilation:** Si un attaquant analyse le binaire de la version 1.0 de votre logiciel et, avec beaucoup d'efforts, réussit à briser l'obfuscation d'une chaîne (en mode de clé automatique), cette connaissance sera probablement inutile pour la version 1.1, car le `__DATE__ __TIME__` aura changé, entraînant des `compile_time_seed` et des micro-programmes complètement différents.
+- **Unicité Intra-Compilation:** Si vous utilisez `DRALYXOR("AdminPassword")` à deux endroits différents dans votre code (ou dans le même fichier .cpp), le `__COUNTER__` garantira que les objets `Obfuscated_String` résultants, et donc leurs représentations obscurcies dans le binaire, seront différents. Cela empêche un attaquant de trouver un motif obscurci et de l'utiliser pour localiser toutes les autres occurrences de la même chaîne originale.
 
-Cette génération robuste de graines est une pierre angulaire de la sécurité de **Dralyxor** contre les attaques qui dépendent de la découverte d'un "secret maître" ou de l'exploitation de la répétition des chiffres et des transformations.
+Cette génération robuste de graines est une pierre angulaire de la sécurité de **Dralyxor** contre les attaques qui dépendent de la découverte d'un "secret maître" ou de l'exploitation de la répétition des chiffrements et des transformations.
 
 ## Référence Complète de l'API Publique
 
 ### Macros d'Obfuscation
 
-Ce sont les principaux points d'entrée pour créer des chaînes obfusquées.
+Ce sont les principaux points d'entrée pour créer des chaînes obscurcies.
 
 #### `DRALYXOR(str_literal)`
 
-- **Objectif:** Crée un objet `Obfuscated_String` avec une durée de vie statique (existe pendant toute l'exécution du programme). Idéal pour les constantes globales ou les chaînes qui doivent être accessibles depuis plusieurs emplacements et persister.
-- **Stockage:** Mémoire statique (normalement dans la section des données du programme).
-- **Implémentation (simplifiée):**
+- **Objectif:** Crée un objet `Obfuscated_String` avec une durée de vie statique (existe pendant toute l'exécution du programme). Idéal pour les constantes globales ou les chaînes qui doivent être accessibles depuis plusieurs endroits et persister.
+- **Stockage:** Mémoire statique (généralement dans la section de données du programme).
+- **Implémentation:**
    ```cpp
    #define DRALYXOR(str_literal) \
        []() -> auto& { \
-           /* La macro __COUNTER__ garantit un Instance_Counter unique pour chaque utilisation */ \
-           /* decltype(*str_literal) infère le type de caractère (char, wchar_t) */ \
-           /* (sizeof(str_literal) / sizeof(decltype(*str_literal))) calcule la taille incluant le nul */ \
-           static auto obfuscated_static_string = Dralyxor::Obfuscated_String< \
-               typename Dralyxor::Detail::Fallback::decay<decltype(*str_literal)>::type, \
-               (sizeof(str_literal) / sizeof(decltype(*str_literal))), \
-               __COUNTER__ \
-           >(str_literal); \
+           static auto obfuscated_static_string = Dralyxor::Obfuscated_String<typename Dralyxor::Detail::Fallback::decay<decltype(*str_literal)>::type, (sizeof(str_literal) / sizeof(decltype(*str_literal))), __COUNTER__>(str_literal); \
            return obfuscated_static_string; \
        }()
    ```
-
 - **Paramètres:**
-   - `str_literal`: Un littéral de chaîne de style C (ex., `"Hello World"`, `L"Unicode String"`).
+   - `str_literal`: Un littéral de chaîne de style C (par exemple, `"Hello World"`, `L"Unicode String"`).
 - **Retour:** Une référence (`auto&`) à l'objet `Obfuscated_String` statique, créé à l'intérieur d'une lambda immédiatement invoquée.
 - **Exemple:**
    ```cpp
@@ -697,16 +731,11 @@ Ce sont les principaux points d'entrée pour créer des chaînes obfusquées.
 
 #### `DRALYXOR_LOCAL(str_literal)`
 
-- **Objectif:** Crée un objet `Obfuscated_String` avec une durée de vie automatique (normalement sur la pile, si utilisé à l'intérieur d'une fonction). Idéal pour les secrets temporaires confinés à une portée.
+- **Objectif:** Crée un objet `Obfuscated_String` avec une durée de vie automatique (généralement sur la pile, s'il est utilisé à l'intérieur d'une fonction). Idéal pour les secrets temporaires confinés à une portée.
 - **Stockage:** Automatique (pile pour les variables locales de fonction).
-- **Implémentation (simplifiée):**
+- **Implémentation:**
    ```cpp
-   #define DRALYXOR_LOCAL(str_literal) \
-       Dralyxor::Obfuscated_String< \
-           typename Dralyxor::Detail::Fallback::decay<decltype(*str_literal)>::type, \
-           (sizeof(str_literal) / sizeof(decltype(*str_literal))), \
-           __COUNTER__ \
-       >(str_literal)
+   #define DRALYXOR_LOCAL(str_literal) Dralyxor::Obfuscated_String<typename Dralyxor::Detail::Fallback::decay<decltype(*str_literal)>::type, (sizeof(str_literal) / sizeof(decltype(*str_literal))), __COUNTER__>(str_literal)
    ```
 - **Paramètres:**
    - `str_literal`: Un littéral de chaîne de style C.
@@ -719,21 +748,49 @@ Ce sont les principaux points d'entrée pour créer des chaînes obfusquées.
    } // temp_key est détruit ici, son destructeur appelle Clear_Internal_Data().
    ```
 
+#### `DRALYXOR_KEY(str_literal, key_literal)`
+
+- **Objectif:** Similaire à `DRALYXOR`, crée un objet `Obfuscated_String` statique, mais utilise une **clé fournie par l'utilisateur** (`key_literal`) pour initialiser l'obfuscation, offrant le plus haut niveau de sécurité.
+- **Stockage:** Mémoire statique (généralement dans la section de données du programme).
+- **Implémentation:**
+   ```cpp
+   #define DRALYXOR_KEY(str_literal, key_literal) \
+       []() -> auto& { \
+           static auto obfuscated_static_string_with_key = Dralyxor::Obfuscated_String<typename Dralyxor::Detail::Fallback::decay<decltype(*str_literal)>::type, (sizeof(str_literal) / sizeof(decltype(*str_literal))), __COUNTER__, Dralyxor::Detail::fnv1a_hash(key_literal)>(str_literal); \
+           return obfuscated_static_string_with_key; \
+       }()
+   ```
+- **Paramètres:**
+   - `str_literal`: Le littéral de chaîne à obscurcir.
+   - `key_literal`: Le littéral de chaîne à utiliser comme clé secrète.
+- **Retour:** Une référence (`auto&`) à l'objet `Obfuscated_String` statique.
+- **Exemple:** `static auto& g_db_password = DRALYXOR_KEY("pa$$w0rd!", "MySecretAppKey-78d1-41e7-9a4d");`
+
+#### `DRALYXOR_KEY_LOCAL(str_literal, key_literal)`
+
+- **Objectif:** Similaire à `DRALYXOR_LOCAL`, crée un objet `Obfuscated_String` sur la pile, en utilisant une **clé fournie par l'utilisateur**.
+- **Stockage:** Automatique (pile pour les variables locales de fonction).
+- **Implémentation:**
+   ```cpp
+   #define DRALYXOR_KEY_LOCAL(str_literal, key_literal) Dralyxor::Obfuscated_String<typename Dralyxor::Detail::Fallback::decay<decltype(*str_literal)>::type, (sizeof(str_literal) / sizeof(decltype(*str_literal))), __COUNTER__, Dralyxor::Detail::fnv1a_hash(key_literal)>(str_literal)
+   ```
+- **Paramètres:**
+   - `str_literal`: Le littéral de chaîne à obscurcir.
+   - `key_literal`: Le littéral de chaîne à utiliser comme clé.
+- **Retour:** Un objet `Obfuscated_String` par valeur.
+- **Exemple:** `auto temp_token = DRALYXOR_KEY_LOCAL("TempAuthToken", "SessionSpecificSecret-a1b2");`
+
 ### Macro d'Accès Sécurisé
 
 #### `DRALYXOR_SECURE(obfuscated_var)`
 
 - **Objectif:** Fournit un accès sécurisé et temporaire au contenu déchiffré d'un objet `Obfuscated_String`. C'est la **seule méthode recommandée** pour lire la chaîne.
-- **Implémentation (simplifiée):**
+- **Implémentation:**
    ```cpp
-   #define DRALYXOR_SECURE(obfuscated_var) \
-       Dralyxor::Secure_Accessor< \
-           typename Dralyxor::Detail::Fallback::decay<decltype(obfuscated_var)>::type \
-       >(obfuscated_var)
+   #define DRALYXOR_SECURE(obfuscated_var) Dralyxor::Secure_Accessor<typename Dralyxor::Detail::Fallback::decay<decltype(obfuscated_var)>::type>(obfuscated_var)
    ```
-
 - **Paramètres:**
-   - `obfuscated_var`: Une variable (lvalue ou rvalue pouvant être liée à une référence lvalue non-const) de type `Dralyxor::Obfuscated_String<...>`. La variable doit être mutable car le constructeur du `Secure_Accessor` appelle `Decrypt()` et `Encrypt()` sur celle-ci.
+   - `obfuscated_var`: Une variable (lvalue ou rvalue qui peut être liée à une référence lvalue non-const) de type `Dralyxor::Obfuscated_String<...>`. La variable doit être mutable car le constructeur du `Secure_Accessor` appelle `Decrypt()` et `Encrypt()` sur elle.
 - **Retour:** Un objet `Dralyxor::Secure_Accessor<decltype(obfuscated_var)>` par valeur.
 - **Utilisation:**
    ```cpp
@@ -742,56 +799,56 @@ Ce sont les principaux points d'entrée pour créer des chaînes obfusquées.
    {
        auto accessor = DRALYXOR_SECURE(my_static_secret);
        const char* secret_ptr = accessor.Get(); // Ou simplement: const char* secret_ptr = accessor; (conversion implicite)
-       
+      
        if (secret_ptr) {
            // Utilisez secret_ptr ici. Il pointe vers la chaîne déchiffrée temporairement dans le tampon de l'accesseur.
            // Ex: send_data(secret_ptr);
        }
        else {
-           // Échec du déchiffrement ou intégrité. Traitez l'erreur.
-           // L'accesseur a pu échouer à s'initialiser (ex., my_static_secret a été corrompu).
+           // Échec du déchiffrement ou de l'intégrité. Traitez l'erreur.
+           // L'accesseur a peut-être échoué à s'initialiser (ex: my_static_secret a été corrompu).
        }
    } // accessor est détruit. Ses tampons internes (fragments et chaîne reconstruite) sont nettoyés.
-    // Le my_static_secret.storage_ a déjà été ré-obfusqué par le constructeur du Secure_Accessor
-    // juste après avoir copié le contenu dans les fragments de l'accesseur.
+    // my_static_secret.storage_ a déjà été ré-obscurci par le constructeur du Secure_Accessor
+    // juste après la copie du contenu vers les fragments de l'accesseur.
    ```
 
 > [!WARNING]
-> Vérifiez toujours que le pointeur retourné par `DRALYXOR_SECURE(...).Get()` (ou par la conversion implicite) n'est pas `nullptr` avant de l'utiliser. Un retour `nullptr` indique un échec du déchiffrement (par exemple, détection d'un débogueur, corruption des canaris/checksums dans l'`Obfuscated_String` parent ou dans le `Secure_Accessor` lui-même). L'utilisation d'un pointeur `nullptr` entraînera un comportement indéfini (probablement une violation de segmentation).
+> Vérifiez toujours que le pointeur retourné par `DRALYXOR_SECURE(...).Get()` (ou par la conversion implicite) n'est pas `nullptr` avant de l'utiliser. Un retour `nullptr` indique un échec du déchiffrement (par exemple, détection de débogueur, corruption des canaris/checksums dans l' `Obfuscated_String` parent ou dans le `Secure_Accessor` lui-même). L'utilisation d'un pointeur `nullptr` entraînera un comportement indéfini (probablement une violation de segmentation).
 
 ## Fonctionnalités Avancées et Bonnes Pratiques
 
-### Support Total d'Unicode (Chaînes Larges - `wchar_t`)
+### Prise en Charge Complète d'Unicode (Chaînes Larges - `wchar_t`)
 
-**Dralyxor** est agnostique au type de caractère grâce à l'utilisation de templates (`CharT`). Il gère nativement `char` (pour les chaînes ASCII/UTF-8) et `wchar_t` (pour les chaînes UTF-16 sous Windows ou UTF-32 sur d'autres systèmes, selon la plateforme et le compilateur). Il suffit d'utiliser le préfixe `L` pour les littéraux `wchar_t`:
+**Dralyxor** est agnostique au type de caractère grâce à l'utilisation de templates (`CharT`). Il gère nativement `char` (pour les chaînes ASCII/UTF-8) et `wchar_t` (pour les chaînes UTF-16 sur Windows ou UTF-32 sur d'autres systèmes, selon la plateforme et le compilateur). Utilisez simplement le préfixe `L` pour les littéraux `wchar_t`:
 ```cpp
 auto wide_message = DRALYXOR_LOCAL(L"Message Unicode: Bonjour le Monde Ω ❤️");
 {
     auto accessor = DRALYXOR_SECURE(wide_message);
 
     if (accessor.Get()) {
-        // Exemple sous Windows:
+        // Exemple sur Windows:
         // MessageBoxW(nullptr, accessor.Get(), L"Titre Unicode", MB_OK);
         // Exemple avec wcout:
-        // #include <io.h> // Pour _setmode sous Windows avec MSVC
-        // #include <fcntl.h> // Pour _O_U16TEXT sous Windows avec MSVC
+        // #include <io.h> // Pour _setmode sur Windows avec MSVC
+        // #include <fcntl.h> // Pour _O_U16TEXT sur Windows avec MSVC
         // _setmode(_fileno(stdout), _O_U16TEXT); // Configure stdout pour UTF-16
         // std::wcout << L"Wide Message: " << accessor.Get() << std::endl;
     }
 }
 ```
 
-Pour les caractères de 1 octet (`sizeof(CharT) == 1`), le moteur de transformation `Micro_Program_Cipher` applique le micro-programme octet par octet. Pour les caractères multioctets (`sizeof(CharT) > 1`):
-- `Micro_Program_Cipher::Transform_Compile_Time_Consistent` utilise une approche plus simple: le caractère multioctet entier est XORé avec un masque dérivé de `prng_key_for_ops_in_elem` (répliqué pour remplir la taille du `CharT`). Par exemple, si `CharT` est `wchar_t` (2 octets) et `prng_key_for_ops_in_elem` est `0xAB`, le caractère sera XORé avec `0xABAB`.
+Pour les caractères d'1 octet (`sizeof(CharT) == 1`), le moteur de transformation `Micro_Program_Cipher` applique le micro-programme octet par octet. Pour les caractères multi-octets (`sizeof(CharT) > 1`):
+- `Micro_Program_Cipher::Transform_Compile_Time_Consistent` utilise une approche plus simple: le caractère multi-octet entier est XORé avec un masque dérivé de la `prng_key_for_ops_in_elem` (répliquée pour remplir la taille du `CharT`). Par exemple, si `CharT` est `wchar_t` (2 octets) et que `prng_key_for_ops_in_elem` est `0xAB`, le caractère sera XORé avec `0xABAB`.
 Cela garantit que tous les octets du `wchar_t` sont affectés par l'obfuscation, même si ce n'est pas par le micro-programme complet. La complexité du micro-programme contribue toujours indirectement par la dérivation des clés du PRNG.
 
-### Adaptation Inteligente aux Standards **C++** et Environnements (Mode Noyau)
+### Adaptation Intelligente aux Standards **C++** et aux Environnements (Kernel Mode)
 
 Comme mentionné, **Dralyxor** s'adapte:
-- **Standards C++:** Requiert au minimum **C++14**. Détecte et utilise les fonctionnalités de **C++17** et **C++20** (comme `if constexpr`, `consteval`, les suffixes `_v` pour `type_traits`) lorsque le compilateur les supporte, recourant à des alternatives **C++14** sinon. Des macros comme `_DRALYXOR_IF_CONSTEXPR` et `_DRALYXOR_CONSTEVAL` dans `detection.hpp` gèrent cette adaptation.
-- **Mode Noyau:** Lorsque `_KERNEL_MODE` est défini (typique dans les projets WDK pour les pilotes Windows), **Dralyxor** (via `env_traits.hpp`) évite d'inclure des en-têtes standard de la STL comme `<type_traits>` qui pourraient ne pas être disponibles ou se comporter différemment. À la place, il utilise ses propres implémentations `constexpr` d'outils de base comme `Dralyxor::Detail::Fallback::decay` et `Dralyxor::Detail::Fallback::remove_reference`. Cela permet une utilisation sûre de **Dralyxor** pour protéger les chaînes dans les composants système de bas niveau.
-   - De même, `secure_memory.hpp` utilise `RtlSecureZeroMemory` en Mode Noyau.
-   - Les vérifications anti-débogage du Mode Utilisateur (comme `IsDebuggerPresent`, `NtQueryInformationProcess`, `OutputDebugString`) sont désactivées (`#if !defined(_KERNEL_MODE)`) en Mode Noyau, car elles ne s'appliquent pas ou ont des équivalents différents. Les vérifications de synchronisation peuvent toujours avoir un certain effet, mais la principale ligne de défense en Mode Noyau est l'obfuscation elle-même.
+- **Standards C++:** Requiert au minimum **C++14**. Détecte et utilise les fonctionnalités de **C++17** et **C++20** (comme `if constexpr`, `consteval`, les suffixes `_v` pour `type_traits`) lorsque le compilateur les supporte, recourant à des alternatives **C++14** dans le cas contraire. Des macros comme `_DRALYXOR_IF_CONSTEXPR` et `_DRALYXOR_CONSTEVAL` dans `detection.hpp` gèrent cette adaptation.
+- **Kernel Mode:** Lorsque `_KERNEL_MODE` est défini (typique dans les projets WDK pour les pilotes Windows), **Dralyxor** (via `env_traits.hpp`) évite d'inclure les en-têtes standard de la STL comme `<type_traits>` qui pourraient ne pas être disponibles ou se comporter différemment. À la place, il utilise ses propres implémentations `constexpr` d'outils de base comme `Dralyxor::Detail::Fallback::decay` et `Dralyxor::Detail::Fallback::remove_reference`. Cela permet une utilisation sûre de **Dralyxor** pour protéger les chaînes dans les composants système de bas niveau.
+   - De même, `secure_memory.hpp` utilise `RtlSecureZeroMemory` en Kernel Mode. Pour d'autres plates-formes, comme Linux, il recourt à l'utilisation sécurisée de `memset` pour garantir le nettoyage de la mémoire, s'adaptant pour être compatible avec différents types de données.
+   - Les vérifications anti-débogage du User Mode (comme `IsDebuggerPresent`, `NtQueryInformationProcess`, `OutputDebugString`) sont désactivées (`#if !defined(_KERNEL_MODE)`) en Kernel Mode, car elles ne s'appliquent pas ou ont des équivalents différents. Les vérifications de timing peuvent encore avoir un certain effet, mais la principale ligne de défense en Kernel Mode est l'obfuscation elle-même.
 
 ### Considérations de Performance et de Surcoût
 
