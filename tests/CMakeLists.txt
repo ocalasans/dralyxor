@@ -6,6 +6,9 @@ set(DRALYXOR_TESTS
     detection_flags
     generic_character_types
     move_semantics
+    tamper_detection
+    splitmix64_bounds
+    transient_detection
 )
 
 set(DRALYXOR_TEST_STANDARDS 14 17 20 23)
