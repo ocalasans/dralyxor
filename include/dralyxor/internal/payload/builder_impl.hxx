@@ -25,6 +25,7 @@
 #include "../checksum/scrambler.hxx"
 #include "../crypto/cipher.hxx"
 #include "../fnv1a/hash.hxx"
+#include "../memory/type_traits.hxx"
 #include "../program/builder.hxx"
 #include "../program/scrambler.hxx"
 #include "../seed/mixing.hxx"
@@ -39,6 +40,8 @@ namespace Dralyxor {
         template<typename Char_T, std::size_t N>
         DRALYXOR_NODISCARD DRALYXOR_CONSTEVAL Types::Encrypted<Char_T, N> Builder::Build(const Char_T (&literal)[N], std::uint64_t extra_seed) noexcept {
 #endif
+            static_assert(Memory::Type_Traits::Is_Supported_Character_Type<Char_T>(), "Dralyxor > Payload > Builder: Char_T must be an integer character type of 1, 2, 4 or 8 bytes (bool is not supported).");
+
             auto content_hash = Checksum::Calculator::Compute<Char_T>(literal, N, Fnv1a::Types::OFFSET_BASIS);
 
 #if DRALYXOR_HAS_SOURCE_LOCATION

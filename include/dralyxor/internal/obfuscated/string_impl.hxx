@@ -28,6 +28,8 @@ namespace Dralyxor {
             payload.scrambled_program
         }, _base_seed {
             payload.base_seed
+        }, _last_effective_seed {
+            payload.base_seed
         }, _scrambled_checksum {
             payload.scrambled_checksum
         }, _tamper_guard {}, _last_detection_flags {
@@ -47,6 +49,8 @@ namespace Dralyxor {
             other._scrambled_program
         }, _base_seed {
             other._base_seed
+        }, _last_effective_seed {
+            other._last_effective_seed
         }, _scrambled_checksum {
             other._scrambled_checksum
         }, _tamper_guard {}, _last_detection_flags {
@@ -57,10 +61,12 @@ namespace Dralyxor {
             for (std::size_t i = 0; i < N; ++i)
                 _storage[i] = other._storage[i];
 
+            _tamper_guard.Bind(this, _base_seed, _storage, N);
+
             Memory::Secure_Clear::Apply(other._storage, sizeof(other._storage));
 
             other._is_decrypted = false;
-            other._tamper_guard = Tamper_Guard {};
+            other._tamper_guard.Bind(&other, other._base_seed, other._storage, N);
         }
 
         template<typename Char_T, std::size_t N>
@@ -75,26 +81,29 @@ namespace Dralyxor {
 
             _scrambled_program = other._scrambled_program;
             _base_seed = other._base_seed;
+            _last_effective_seed = other._last_effective_seed;
             _scrambled_checksum = other._scrambled_checksum;
             _is_decrypted = other._is_decrypted;
             _last_detection_flags = other._last_detection_flags;
 
-            _tamper_guard = Tamper_Guard {};
+            _tamper_guard.Bind(this, _base_seed, _storage, N);
 
             Memory::Secure_Clear::Apply(other._storage, sizeof(other._storage));
 
             other._is_decrypted = false;
-            other._tamper_guard = Tamper_Guard {};
+            other._tamper_guard.Bind(&other, other._base_seed, other._storage, N);
 
             return *this;
         }
 
         template<typename Char_T, std::size_t N>
         void String<Char_T, N>::Ensure_Not_Tampered() noexcept {
-            if (!_tamper_guard.Verify(this, _base_seed)) {
+            if (!_tamper_guard.Verify(this, _base_seed, _storage, N)) {
                 Memory::Secure_Clear::Apply(_storage, sizeof(_storage));
 
                 _is_decrypted = false;
+
+                _tamper_guard.Bind(this, _base_seed, _storage, N);
             }
         }
 
@@ -102,16 +111,25 @@ namespace Dralyxor {
         DRALYXOR_NODISCARD const Char_T* String<Char_T, N>::Decrypt() noexcept {
             Ensure_Not_Tampered();
 
-            if (_is_decrypted)
-                return _storage;
-
             const auto runtime_key_result = Anti_Debug::Runtime_Key::Calculate(_base_seed);
 
             _last_detection_flags = runtime_key_result.detected_flags;
 
+            if (_is_decrypted) {
+                if (runtime_key_result.effective_seed == _last_effective_seed)
+                    return _storage;
+
+                Crypto::Transform<Char_T>(_storage, N, _scrambled_program, _last_effective_seed, false);
+
+                _is_decrypted = false;
+            }
+
             Crypto::Transform<Char_T>(_storage, N, _scrambled_program, runtime_key_result.effective_seed, true);
 
+            _last_effective_seed = runtime_key_result.effective_seed;
             _is_decrypted = true;
+
+            _tamper_guard.Bind(this, _base_seed, _storage, N);
 
             return _storage;
         }
@@ -123,9 +141,11 @@ namespace Dralyxor {
             if (!_is_decrypted)
                 return;
 
-            Crypto::Transform<Char_T>(_storage, N, _scrambled_program, _base_seed, false);
+            Crypto::Transform<Char_T>(_storage, N, _scrambled_program, _last_effective_seed, false);
 
             _is_decrypted = false;
+
+            _tamper_guard.Bind(this, _base_seed, _storage, N);
         }
 
         template<typename Char_T, std::size_t N>

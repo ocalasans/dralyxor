@@ -40,7 +40,15 @@ namespace Dralyxor {
             if (exclusive_upper_bound == 0)
                 return 0;
 
-            return Next() % exclusive_upper_bound;
+            const std::uint64_t largest_value = ~static_cast<std::uint64_t>(0);
+            const std::uint64_t first_rejected_value = largest_value - (largest_value % exclusive_upper_bound);
+
+            std::uint64_t candidate = Next();
+
+            while (candidate >= first_rejected_value)
+                candidate = Next();
+
+            return candidate % exclusive_upper_bound;
         }
     }
 }

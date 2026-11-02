@@ -28,6 +28,11 @@ namespace Dralyxor {
         struct Type_Traits {
             template<typename T>
             using Unsigned_Equivalent = typename std::make_unsigned<T>::type;
+
+            template<typename T>
+            static constexpr bool Is_Supported_Character_Type() noexcept {
+                return std::is_integral<T>::value && !std::is_same<T, bool>::value && (sizeof(T) == 1 || sizeof(T) == 2 || sizeof(T) == 4 || sizeof(T) == 8);
+            }
         };
     }
 }

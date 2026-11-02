@@ -21,6 +21,7 @@
 
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 //
 #include "../attributes.hxx"
@@ -29,9 +30,16 @@ namespace Dralyxor {
     namespace Obfuscated {
         class Tamper_Guard {
             public:
-                DRALYXOR_NODISCARD bool Verify(const void* owner_address, std::uint64_t seed) noexcept;
+                template<typename Char_T>
+                void Bind(const void* owner_address, std::uint64_t seed, const Char_T* storage, std::size_t element_count) noexcept;
+
+                template<typename Char_T>
+                DRALYXOR_NODISCARD bool Verify(const void* owner_address, std::uint64_t seed, const Char_T* storage, std::size_t element_count) noexcept;
 
             private:
+                template<typename Char_T>
+                DRALYXOR_NODISCARD static std::uint64_t Compute_Canary(const void* owner_address, std::uint64_t seed, const Char_T* storage, std::size_t element_count) noexcept;
+
                 std::uint64_t _canary = 0;
                 bool _bound = false;
         };

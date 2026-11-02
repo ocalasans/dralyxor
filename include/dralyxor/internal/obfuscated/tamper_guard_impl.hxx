@@ -22,12 +22,29 @@
 #pragma once
 
 #include "../attributes.hxx"
+#include "../checksum/calculator.hxx"
 #include "../integrity/canary.hxx"
+#include "../seed/mixing.hxx"
 
 namespace Dralyxor {
     namespace Obfuscated {
-        DRALYXOR_NODISCARD inline bool Tamper_Guard::Verify(const void* owner_address, std::uint64_t seed) noexcept {
-            const std::uint64_t expected_canary = Integrity::Canary::Compute(owner_address, seed);
+        template<typename Char_T>
+        DRALYXOR_NODISCARD std::uint64_t Tamper_Guard::Compute_Canary(const void* owner_address, std::uint64_t seed, const Char_T* storage, std::size_t element_count) noexcept {
+            const std::uint64_t content_fingerprint = Checksum::Calculator::Compute<Char_T>(storage, element_count, seed);
+            const std::uint64_t content_aware_seed = Seed::Mixing::Derive_Sub(seed, Seed::Types::Domain::Content_Fingerprint, content_fingerprint);
+
+            return Integrity::Canary::Compute(owner_address, content_aware_seed);
+        }
+
+        template<typename Char_T>
+        void Tamper_Guard::Bind(const void* owner_address, std::uint64_t seed, const Char_T* storage, std::size_t element_count) noexcept {
+            _canary = Compute_Canary<Char_T>(owner_address, seed, storage, element_count);
+            _bound = true;
+        }
+
+        template<typename Char_T>
+        DRALYXOR_NODISCARD bool Tamper_Guard::Verify(const void* owner_address, std::uint64_t seed, const Char_T* storage, std::size_t element_count) noexcept {
+            const std::uint64_t expected_canary = Compute_Canary<Char_T>(owner_address, seed, storage, element_count);
 
             if (!_bound) {
                 _canary = expected_canary;

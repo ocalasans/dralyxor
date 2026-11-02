@@ -34,6 +34,7 @@ namespace Dralyxor {
                 Element_Key_Secondary = 0xFF51AFD7ED558CCDULL,
                 Checksum_Scramble = 0xC4CEB9FE1A85EC53ULL,
                 Canary = 0x2545F4914F6CDD1DULL,
+                Content_Fingerprint = 0xD6E8FEB86659FD93ULL,
             };
         };
     }

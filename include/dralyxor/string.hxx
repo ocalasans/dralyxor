@@ -31,6 +31,7 @@
 #include "internal/checksum/scrambler.hxx"
 #include "internal/crypto/cipher.hxx"
 #include "internal/memory/secure_clear.hxx"
+#include "internal/memory/type_traits.hxx"
 #include "internal/payload/builder.hxx"
 #include "internal/payload/types.hxx"
 #include "internal/program/types.hxx"
@@ -44,7 +45,7 @@ namespace Dralyxor {
     namespace Obfuscated {
         template<typename Char_T, std::size_t N>
         class String {
-            static_assert(sizeof(Char_T) == 1 || sizeof(Char_T) == 2 || sizeof(Char_T) == 4 || sizeof(Char_T) == 8, "Dralyxor > Obfuscated > String: Char_T must be a 1, 2, 4, or 8-byte character type.");
+            static_assert(Memory::Type_Traits::Is_Supported_Character_Type<Char_T>(), "Dralyxor > Obfuscated > String: Char_T must be an integer character type of 1, 2, 4, or 8 bytes (bool is not supported).");
             static_assert(N > 0, "Dralyxor > Obfuscated > String: the literal must include at least the null terminator.");
 
             public:
@@ -88,6 +89,7 @@ namespace Dralyxor {
                 Char_T _storage[N];
                 Program::Types::Scrambled_Program _scrambled_program;
                 std::uint64_t _base_seed;
+                std::uint64_t _last_effective_seed;
                 std::uint64_t _scrambled_checksum;
                 Tamper_Guard _tamper_guard;
                 Anti_Debug::Types::Detection_Flag _last_detection_flags;

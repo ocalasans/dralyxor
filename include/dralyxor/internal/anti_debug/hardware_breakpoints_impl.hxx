@@ -34,6 +34,7 @@
     #include <cstddef>
     #include <cstdint>
     #include <sys/ptrace.h>
+    #include <sys/syscall.h>
     #include <sys/user.h>
     #include <sys/wait.h>
     #include <unistd.h>
@@ -87,23 +88,38 @@ namespace Dralyxor {
                 return false;
             }
 
-            inline bool Child_Reports_Debug_Register_Set(pid_t parent_pid) noexcept {
+            DRALYXOR_NODISCARD inline pid_t Calling_Thread_Id() noexcept {
+                return static_cast<pid_t>(syscall(SYS_gettid));
+            }
+
+            inline bool Child_Reports_Debug_Register_Set(pid_t target_thread_id) noexcept {
                 const pid_t child_pid = fork();
 
                 if (child_pid < 0)
                     return false;
 
                 if (child_pid == 0) {
-                    if (ptrace(PTRACE_ATTACH, parent_pid, nullptr, nullptr) != 0)
+                    if (ptrace(PTRACE_ATTACH, target_thread_id, nullptr, nullptr) != 0)
                         _exit(2);
 
                     int wait_status = 0;
 
-                    waitpid(parent_pid, &wait_status, 0);
+                    if (waitpid(target_thread_id, &wait_status, __WALL) != target_thread_id || !WIFSTOPPED(wait_status)) {
+                        ptrace(PTRACE_DETACH, target_thread_id, nullptr, nullptr);
+                        
+                        _exit(2);
+                    }
 
-                    const long dr7_value = ptrace(PTRACE_PEEKUSER, parent_pid, reinterpret_cast<void*>(offsetof(struct user, u_debugreg[7])), nullptr);
+                    errno = 0;
 
-                    ptrace(PTRACE_DETACH, parent_pid, nullptr, nullptr);
+                    const long dr7_value = ptrace(PTRACE_PEEKUSER, target_thread_id, reinterpret_cast<void*>(offsetof(struct user, u_debugreg[7])), nullptr);
+                    const bool peek_failed = dr7_value == -1 && errno != 0;
+
+                    ptrace(PTRACE_DETACH, target_thread_id, nullptr, nullptr);
+
+                    if (peek_failed)
+                        _exit(2);
+
                     _exit(dr7_value != 0 ? 1 : 0);
                 }
 
@@ -117,7 +133,7 @@ namespace Dralyxor {
         }
 
         DRALYXOR_NODISCARD inline Types::Detection_Flag Hardware_Breakpoints::Check() noexcept {
-            return Internal::Child_Reports_Debug_Register_Set(getpid()) ? Types::Detection_Flag::Hardware_Breakpoint : Types::Detection_Flag::None;
+            return Internal::Child_Reports_Debug_Register_Set(Internal::Calling_Thread_Id()) ? Types::Detection_Flag::Hardware_Breakpoint : Types::Detection_Flag::None;
         }
 #else
         DRALYXOR_NODISCARD inline Types::Detection_Flag Hardware_Breakpoints::Check() noexcept {
